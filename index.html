@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anonymous Messenger</title>
+
+<style>
+* {
+  box-sizing: border-box;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont;
+}
+
+body {
+  margin: 0;
+  background: #f0f2f5;
+  height: 100vh;
+}
+
+/* APP */
+#app {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* HEADER */
+.header {
+  background: #1877f2;
+  color: white;
+  padding: 14px;
+  font-weight: bold;
+  text-align: center;
+}
+
+/* STATUS */
+.status {
+  padding: 10px;
+  background: #fff;
+  font-size: 14px;
+  border-bottom: 1px solid #ddd;
+}
+
+/* USER LIST */
+.users {
+  flex: 1;
+  background: #fff;
+  overflow-y: auto;
+}
+
+.user {
+  padding: 14px;
+  border-bottom: 1px solid #eee;
+  font-size: 14px;
+}
+
+.user.you {
+  font-weight: bold;
+}
+</style>
+</head>
+
+<body>
+
+<div id="app">
+  <div class="header">Anonymous Messenger</div>
+  <div class="status" id="status">Connecting…</div>
+  <div class="users" id="users"></div>
+</div>
+
+<script>
+/* =========================
+   CONFIG — CHANGE NOTHING
+   ========================= */
+const SERVER_URL = "wss://anon-messenger-server-production.up.railway.app";
+
+/* =========================
+   IDENTITY
+   ========================= */
+function getIdentity() {
+  let id = localStorage.getItem("anon_identity");
+  if (!id) {
+    id = crypto.randomUUID().replace(/-/g, "");
+    localStorage.setItem("anon_identity", id);
+  }
+  return id;
+}
+
+const myId = getIdentity();
+
+/* =========================
+   WEBSOCKET CONNECTION
+   ========================= */
+const statusEl = document.getElementById("status");
+const usersEl = document.getElementById("users");
+
+let ws = new WebSocket(SERVER_URL);
+
+ws.onopen = () => {
+  statusEl.textContent = "Online";
+  ws.send(JSON.stringify({
+    type: "hello",
+    publicKey: myId
+  }));
+};
+
+ws.onclose = () => {
+  statusEl.textContent = "Disconnected";
+};
+
+ws.onerror = () => {
+  statusEl.textContent = "Connection error";
+};
+
+ws.onmessage = ev => {
+  const data = JSON.parse(ev.data);
+
+  if (data.type === "online") {
+    renderUsers(data.users);
+  }
+};
+
+/* =========================
+   UI RENDERING
+   ========================= */
+function renderUsers(list) {
+  usersEl.innerHTML = "";
+
+  list.forEach(id => {
+    const div = document.createElement("div");
+    div.className = "user" + (id === myId ? " you" : "");
+    div.textContent = id === myId
+      ? "You"
+      : id.slice(0, 10) + "…";
+    usersEl.appendChild(div);
+  });
+}
+</script>
+
+</body>
+</html>
