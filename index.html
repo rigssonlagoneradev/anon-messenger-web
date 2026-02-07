@@ -8,7 +8,7 @@
 <style>
 * {
   box-sizing: border-box;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont;
+  font-family: system-ui;
 }
 
 body {
@@ -30,7 +30,18 @@ body {
   color: white;
   padding: 14px;
   font-weight: bold;
-  text-align: center;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header button {
+  background: rgba(255,255,255,0.2);
+  color: white;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
 }
 
 /* STATUS */
@@ -52,10 +63,54 @@ body {
   padding: 14px;
   border-bottom: 1px solid #eee;
   font-size: 14px;
+  display: flex;
+  justify-content: space-between;
 }
 
 .user.you {
   font-weight: bold;
+}
+
+.user.friend {
+  background: #f0f8ff;
+}
+
+.user.offline {
+  opacity: 0.5;
+}
+
+/* MODAL */
+#modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: none;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-box {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  width: 90%;
+  max-width: 320px;
+}
+
+.modal-box h3 {
+  margin-top: 0;
+}
+
+.modal-box input {
+  width: 100%;
+  padding: 10px;
+  margin-top: 10px;
+}
+
+.modal-box button {
+  margin-top: 10px;
+  width: 100%;
+  padding: 10px;
 }
 </style>
 </head>
@@ -63,14 +118,29 @@ body {
 <body>
 
 <div id="app">
-  <div class="header">Anonymous Messenger</div>
+  <div class="header">
+    <span>Anonymous Messenger</span>
+    <button onclick="openModal()">➕ Add Friend</button>
+  </div>
+
   <div class="status" id="status">Connecting…</div>
   <div class="users" id="users"></div>
 </div>
 
+<!-- ADD FRIEND MODAL -->
+<div id="modal">
+  <div class="modal-box">
+    <h3>Add Friend</h3>
+    <p>Paste their code:</p>
+    <input id="friendInput" placeholder="Friend ID">
+    <button onclick="addFriend()">Add</button>
+    <button onclick="closeModal()">Cancel</button>
+  </div>
+</div>
+
 <script>
 /* =========================
-   CONFIG — CHANGE NOTHING
+   CONFIG
    ========================= */
 const SERVER_URL = "wss://anon-messenger-server-production.up.railway.app";
 
@@ -89,7 +159,20 @@ function getIdentity() {
 const myId = getIdentity();
 
 /* =========================
-   WEBSOCKET CONNECTION
+   FRIENDS
+   ========================= */
+function getFriends() {
+  return JSON.parse(localStorage.getItem("friends") || "[]");
+}
+
+function saveFriends(list) {
+  localStorage.setItem("friends", JSON.stringify(list));
+}
+
+let friends = getFriends();
+
+/* =========================
+   WEBSOCKET
    ========================= */
 const statusEl = document.getElementById("status");
 const usersEl = document.getElementById("users");
@@ -104,36 +187,65 @@ ws.onopen = () => {
   }));
 };
 
-ws.onclose = () => {
-  statusEl.textContent = "Disconnected";
-};
-
-ws.onerror = () => {
-  statusEl.textContent = "Connection error";
-};
+ws.onclose = () => statusEl.textContent = "Disconnected";
+ws.onerror = () => statusEl.textContent = "Connection error";
 
 ws.onmessage = ev => {
   const data = JSON.parse(ev.data);
-
   if (data.type === "online") {
     renderUsers(data.users);
   }
 };
 
 /* =========================
-   UI RENDERING
+   UI
    ========================= */
-function renderUsers(list) {
+function renderUsers(onlineList) {
   usersEl.innerHTML = "";
 
-  list.forEach(id => {
+  // Show friends first
+  friends.forEach(id => {
+    const online = onlineList.includes(id);
     const div = document.createElement("div");
-    div.className = "user" + (id === myId ? " you" : "");
-    div.textContent = id === myId
-      ? "You"
-      : id.slice(0, 10) + "…";
+    div.className = "user friend" + (online ? "" : " offline");
+    div.textContent = id.slice(0, 12) + (online ? " (online)" : " (offline)");
     usersEl.appendChild(div);
   });
+
+  // Show non-friends
+  onlineList.forEach(id => {
+    if (id === myId || friends.includes(id)) return;
+    const div = document.createElement("div");
+    div.className = "user";
+    div.textContent = id === myId ? "You" : id.slice(0, 12);
+    usersEl.appendChild(div);
+  });
+}
+
+/* =========================
+   MODAL LOGIC
+   ========================= */
+function openModal() {
+  document.getElementById("modal").style.display = "flex";
+}
+
+function closeModal() {
+  document.getElementById("modal").style.display = "none";
+}
+
+function addFriend() {
+  const input = document.getElementById("friendInput");
+  const id = input.value.trim();
+
+  if (!id || id === myId || friends.includes(id)) {
+    closeModal();
+    return;
+  }
+
+  friends.push(id);
+  saveFriends(friends);
+  input.value = "";
+  closeModal();
 }
 </script>
 
