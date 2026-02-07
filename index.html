@@ -12,35 +12,53 @@ body { margin: 0; background: #f0f2f5; height: 100vh; }
 .view { height: 100vh; display: flex; flex-direction: column; }
 
 .header {
-  background: #1877f2; color: white; padding: 14px;
-  display: flex; justify-content: space-between; align-items: center;
+  background: #1877f2;
+  color: white;
+  padding: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .users, .messages {
-  flex: 1; background: #fff; overflow-y: auto;
+  flex: 1;
+  background: #fff;
+  overflow-y: auto;
 }
 
 .user {
-  padding: 12px; border-bottom: 1px solid #eee;
-  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .user.you { background: #f5f5f5; font-weight: bold; }
 .user.friend { background: #f0f8ff; }
 
-.left { display: flex; align-items: center; gap: 10px; }
+.left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
 
 .avatar {
-  width: 36px; height: 36px; border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
   background: #ccc;
   background-size: cover;
   background-position: center;
 }
 
 .badge {
-  background: #ff3b30; color: white;
-  border-radius: 10px; padding: 2px 6px;
-  font-size: 11px; display: none;
+  background: #ff3b30;
+  color: white;
+  border-radius: 10px;
+  padding: 2px 6px;
+  font-size: 11px;
+  display: none;
 }
 
 button { padding: 6px 10px; }
@@ -53,6 +71,7 @@ button { padding: 6px 10px; }
   padding: 10px 14px;
   border-radius: 18px;
 }
+
 .me { background: #1877f2; color: white; margin-left: auto; }
 .them { background: #e4e6eb; }
 
@@ -61,6 +80,7 @@ button { padding: 6px 10px; }
   padding: 10px;
   border-top: 1px solid #ddd;
 }
+
 textarea {
   flex: 1;
   resize: none;
@@ -106,25 +126,26 @@ textarea {
 </div>
 
 <script>
-/* ===== Identity ===== */
+/* ========= Identity ========= */
 let myId = localStorage.getItem("anon_identity");
 if (!myId) {
   myId = crypto.randomUUID().replace(/-/g,"");
   localStorage.setItem("anon_identity", myId);
 }
 
-/* ===== Profile ===== */
+/* ========= Profile ========= */
 let profile = JSON.parse(localStorage.getItem("profile") || "{}");
 
-/* ===== State ===== */
+/* ========= State ========= */
 let friends = JSON.parse(localStorage.getItem("friends") || "[]");
 let trusted = JSON.parse(localStorage.getItem("trusted") || "[]");
+let pendingRequests = JSON.parse(localStorage.getItem("pendingRequests") || "[]");
 let unread = JSON.parse(localStorage.getItem("unread") || "{}");
 let chatMemory = {};
 let online = new Set();
 let activeChat = null;
 
-/* ===== DOM ===== */
+/* ========= DOM ========= */
 const contacts = document.getElementById("contacts");
 const chat = document.getElementById("chat");
 const profileView = document.getElementById("profile");
@@ -134,7 +155,7 @@ const chatTitle = document.getElementById("chatTitle");
 const msgInput = document.getElementById("msgInput");
 const nameInput = document.getElementById("nameInput");
 
-/* ===== WebSocket ===== */
+/* ========= WebSocket ========= */
 const ws = new WebSocket("wss://anon-messenger-server-production.up.railway.app");
 
 ws.onopen = () => {
@@ -153,6 +174,30 @@ ws.onmessage = e => {
     const from = data.from;
     const text = data.payload.text;
 
+    // Incoming friend request
+    if (text === "[request]") {
+      if (!pendingRequests.includes(from)) {
+        pendingRequests.push(from);
+        localStorage.setItem("pendingRequests", JSON.stringify(pendingRequests));
+      }
+      unread[from] = (unread[from] || 0) + 1;
+      localStorage.setItem("unread", JSON.stringify(unread));
+      renderUsers();
+      return;
+    }
+
+    // Request accepted
+    if (text === "[accepted]") {
+      if (!friends.includes(from)) friends.push(from);
+      if (!trusted.includes(from)) trusted.push(from);
+
+      localStorage.setItem("friends", JSON.stringify(friends));
+      localStorage.setItem("trusted", JSON.stringify(trusted));
+      renderUsers();
+      return;
+    }
+
+    // Normal message
     chatMemory[from] = chatMemory[from] || [];
     chatMemory[from].push({ text, who: "them" });
 
@@ -166,12 +211,10 @@ ws.onmessage = e => {
   }
 };
 
-/* ===== UI Rendering ===== */
+/* ========= UI ========= */
 function renderUsers() {
   users.innerHTML = "";
-
   addRow(myId, true);
-
   [...online].filter(id => id !== myId).forEach(id => addRow(id, false));
 }
 
@@ -199,32 +242,52 @@ function addRow(id, isYou) {
   left.append(av, name, badge);
 
   const btn = document.createElement("button");
+
   if (isYou) {
     btn.textContent = "Copy ID";
     btn.onclick = () => navigator.clipboard.writeText(myId);
-  } else if (!friends.includes(id)) {
-    btn.textContent = "Add";
+
+  } else if (pendingRequests.includes(id)) {
+    btn.textContent = "Accept";
     btn.onclick = () => {
+      pendingRequests = pendingRequests.filter(x => x !== id);
       friends.push(id);
+      trusted.push(id);
+
+      localStorage.setItem("pendingRequests", JSON.stringify(pendingRequests));
       localStorage.setItem("friends", JSON.stringify(friends));
+      localStorage.setItem("trusted", JSON.stringify(trusted));
+
+      ws.send(JSON.stringify({
+        type: "relay",
+        to: id,
+        payload: { text: "[accepted]" }
+      }));
+
       renderUsers();
     };
-  } else if (trusted.includes(id)) {
-    btn.textContent = "Chat";
-    btn.onclick = () => openChat(id);
-  } else {
+
+  } else if (!friends.includes(id)) {
     btn.textContent = "Request";
     btn.onclick = () => {
-      ws.send(JSON.stringify({ type:"relay", to:id, payload:{ text:"[request]" }}));
+      ws.send(JSON.stringify({
+        type: "relay",
+        to: id,
+        payload: { text: "[request]" }
+      }));
       alert("Request sent");
     };
+
+  } else {
+    btn.textContent = "Chat";
+    btn.onclick = () => openChat(id);
   }
 
   div.append(left, btn);
   users.appendChild(div);
 }
 
-/* ===== Chat ===== */
+/* ========= Chat ========= */
 function openChat(id) {
   activeChat = id;
   unread[id] = 0;
@@ -261,35 +324,42 @@ msgInput.addEventListener("keydown", e => {
 
 function sendMessage() {
   if (!activeChat || !msgInput.value.trim()) return;
-  ws.send(JSON.stringify({ type:"relay", to:activeChat, payload:{ text: msgInput.value }}));
+  ws.send(JSON.stringify({
+    type:"relay",
+    to: activeChat,
+    payload:{ text: msgInput.value }
+  }));
   addMessage(msgInput.value, "me");
   chatMemory[activeChat] = chatMemory[activeChat] || [];
   chatMemory[activeChat].push({ text: msgInput.value, who:"me" });
   msgInput.value = "";
 }
 
-/* ===== Profile ===== */
+/* ========= Profile ========= */
 function openProfile() {
   contacts.classList.add("hidden");
   profileView.classList.remove("hidden");
   nameInput.value = profile.name || "";
 }
+
 function closeProfile() {
   profileView.classList.add("hidden");
   contacts.classList.remove("hidden");
 }
+
 function setAvatar(input) {
   const r = new FileReader();
   r.onload = () => profile.avatar = r.result;
   r.readAsDataURL(input.files[0]);
 }
+
 function saveProfile() {
   profile.name = nameInput.value.trim();
   localStorage.setItem("profile", JSON.stringify(profile));
   closeProfile();
 }
 
-/* ===== INITIAL RENDER ===== */
+/* ========= Init ========= */
 renderUsers();
 </script>
 
