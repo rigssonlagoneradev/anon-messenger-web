@@ -5,8 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Anonymous Messenger</title>
 
-<link rel="manifest" href="manifest.json">
-
 <style>
 * { box-sizing: border-box; font-family: system-ui; }
 body { margin: 0; background: #f0f2f5; height: 100vh; }
@@ -18,7 +16,9 @@ body { margin: 0; background: #f0f2f5; height: 100vh; }
   display: flex; justify-content: space-between; align-items: center;
 }
 
-.users, .messages { flex: 1; background: #fff; overflow-y: auto; }
+.users, .messages {
+  flex: 1; background: #fff; overflow-y: auto;
+}
 
 .user {
   padding: 12px; border-bottom: 1px solid #eee;
@@ -32,7 +32,9 @@ body { margin: 0; background: #f0f2f5; height: 100vh; }
 
 .avatar {
   width: 36px; height: 36px; border-radius: 50%;
-  background: #ccc; background-size: cover; background-position: center;
+  background: #ccc;
+  background-size: cover;
+  background-position: center;
 }
 
 .badge {
@@ -46,17 +48,25 @@ button { padding: 6px 10px; }
 .hidden { display: none; }
 
 .msg {
-  max-width: 75%; margin: 6px; padding: 10px 14px; border-radius: 18px;
+  max-width: 75%;
+  margin: 6px;
+  padding: 10px 14px;
+  border-radius: 18px;
 }
 .me { background: #1877f2; color: white; margin-left: auto; }
 .them { background: #e4e6eb; }
 
 .inputBar {
-  display: flex; padding: 10px; border-top: 1px solid #ddd;
+  display: flex;
+  padding: 10px;
+  border-top: 1px solid #ddd;
 }
 textarea {
-  flex: 1; resize: none; padding: 10px;
-  border-radius: 20px; border: 1px solid #ccc;
+  flex: 1;
+  resize: none;
+  padding: 10px;
+  border-radius: 20px;
+  border: 1px solid #ccc;
 }
 </style>
 </head>
@@ -114,11 +124,21 @@ let chatMemory = {};
 let online = new Set();
 let activeChat = null;
 
+/* ===== DOM ===== */
+const contacts = document.getElementById("contacts");
+const chat = document.getElementById("chat");
+const profileView = document.getElementById("profile");
+const users = document.getElementById("users");
+const messages = document.getElementById("messages");
+const chatTitle = document.getElementById("chatTitle");
+const msgInput = document.getElementById("msgInput");
+const nameInput = document.getElementById("nameInput");
+
 /* ===== WebSocket ===== */
 const ws = new WebSocket("wss://anon-messenger-server-production.up.railway.app");
 
 ws.onopen = () => {
-  ws.send(JSON.stringify({ type:"hello", publicKey: myId }));
+  ws.send(JSON.stringify({ type: "hello", publicKey: myId }));
 };
 
 ws.onmessage = e => {
@@ -134,156 +154,144 @@ ws.onmessage = e => {
     const text = data.payload.text;
 
     chatMemory[from] = chatMemory[from] || [];
-    chatMemory[from].push({ text, who:"them" });
+    chatMemory[from].push({ text, who: "them" });
 
     if (activeChat === from) {
-      addMessage(text,"them");
+      addMessage(text, "them");
     } else {
-      unread[from] = (unread[from]||0)+1;
-      localStorage.setItem("unread",JSON.stringify(unread));
+      unread[from] = (unread[from] || 0) + 1;
+      localStorage.setItem("unread", JSON.stringify(unread));
       renderUsers();
     }
   }
 };
 
-/* ===== UI ===== */
+/* ===== UI Rendering ===== */
 function renderUsers() {
   users.innerHTML = "";
 
-  addRow(myId,true);
+  addRow(myId, true);
 
-  [...online].filter(id=>id!==myId).forEach(id=>addRow(id,false));
+  [...online].filter(id => id !== myId).forEach(id => addRow(id, false));
 }
 
-function addRow(id,isYou) {
-  const div=document.createElement("div");
-  div.className="user"+(isYou?" you":"")+(friends.includes(id)?" friend":"");
+function addRow(id, isYou) {
+  const div = document.createElement("div");
+  div.className = "user" + (isYou ? " you" : "") + (friends.includes(id) ? " friend" : "");
 
-  const left=document.createElement("div");
-  left.className="left";
+  const left = document.createElement("div");
+  left.className = "left";
 
-  const av=document.createElement("div");
-  av.className="avatar";
-  if(isYou && profile.avatar) av.style.backgroundImage=`url(${profile.avatar})`;
+  const av = document.createElement("div");
+  av.className = "avatar";
+  if (isYou && profile.avatar) av.style.backgroundImage = `url(${profile.avatar})`;
 
-  const name=document.createElement("span");
-  name.textContent=isYou?(profile.name||"You"):id.slice(0,12);
+  const name = document.createElement("span");
+  name.textContent = isYou ? (profile.name || "You") : id.slice(0,12);
 
-  const badge=document.createElement("span");
-  badge.className="badge";
-  if(unread[id]){badge.textContent=unread[id];badge.style.display="inline-block";}
+  const badge = document.createElement("span");
+  badge.className = "badge";
+  if (unread[id]) {
+    badge.textContent = unread[id];
+    badge.style.display = "inline-block";
+  }
 
-  left.append(av,name,badge);
+  left.append(av, name, badge);
 
-  const btn=document.createElement("button");
-  if(isYou){
-    btn.textContent="Copy ID";
-    btn.onclick=()=>navigator.clipboard.writeText(myId);
-  }else if(!friends.includes(id)){
-    btn.textContent="Add";
-    btn.onclick=()=>{
+  const btn = document.createElement("button");
+  if (isYou) {
+    btn.textContent = "Copy ID";
+    btn.onclick = () => navigator.clipboard.writeText(myId);
+  } else if (!friends.includes(id)) {
+    btn.textContent = "Add";
+    btn.onclick = () => {
       friends.push(id);
-      localStorage.setItem("friends",JSON.stringify(friends));
+      localStorage.setItem("friends", JSON.stringify(friends));
       renderUsers();
     };
-  }else if(trusted.includes(id)){
-    btn.textContent="Chat";
-    btn.onclick=()=>openChat(id);
-  }else{
-    btn.textContent="Request";
-    btn.onclick=()=>{
-      ws.send(JSON.stringify({type:"relay",to:id,payload:{text:"[request]"}}));
+  } else if (trusted.includes(id)) {
+    btn.textContent = "Chat";
+    btn.onclick = () => openChat(id);
+  } else {
+    btn.textContent = "Request";
+    btn.onclick = () => {
+      ws.send(JSON.stringify({ type:"relay", to:id, payload:{ text:"[request]" }}));
       alert("Request sent");
     };
   }
 
-  div.append(left,btn);
+  div.append(left, btn);
   users.appendChild(div);
 }
-  renderUsers();
 
 /* ===== Chat ===== */
-function openChat(id){
-  activeChat=id;
-  unread[id]=0;
-  localStorage.setItem("unread",JSON.stringify(unread));
-  messages.innerHTML="";
-  (chatMemory[id]||[]).forEach(m=>addMessage(m.text,m.who));
-  chatTitle.textContent=id.slice(0,12);
+function openChat(id) {
+  activeChat = id;
+  unread[id] = 0;
+  localStorage.setItem("unread", JSON.stringify(unread));
+  messages.innerHTML = "";
+  (chatMemory[id] || []).forEach(m => addMessage(m.text, m.who));
+  chatTitle.textContent = id.slice(0,12);
   contacts.classList.add("hidden");
   chat.classList.remove("hidden");
 }
 
-function closeChat(){
-  if(activeChat) delete chatMemory[activeChat];
-  activeChat=null;
+function closeChat() {
+  if (activeChat) delete chatMemory[activeChat];
+  activeChat = null;
   chat.classList.add("hidden");
   contacts.classList.remove("hidden");
   renderUsers();
 }
 
-function addMessage(text,who){
-  const div=document.createElement("div");
-  div.className="msg "+who;
-  div.textContent=text;
+function addMessage(text, who) {
+  const div = document.createElement("div");
+  div.className = "msg " + who;
+  div.textContent = text;
   messages.appendChild(div);
-  messages.scrollTop=messages.scrollHeight;
+  messages.scrollTop = messages.scrollHeight;
 }
 
-msgInput.addEventListener("keydown",e=>{
-  if(e.key==="Enter"&&!e.shiftKey){
+msgInput.addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey) {
     e.preventDefault();
     sendMessage();
   }
 });
 
-function sendMessage(){
-  if(!activeChat||!msgInput.value.trim())return;
-  ws.send(JSON.stringify({type:"relay",to:activeChat,payload:{text:msgInput.value}}));
-  addMessage(msgInput.value,"me");
-  chatMemory[activeChat]=chatMemory[activeChat]||[];
-  chatMemory[activeChat].push({text:msgInput.value,who:"me"});
-  msgInput.value="";
+function sendMessage() {
+  if (!activeChat || !msgInput.value.trim()) return;
+  ws.send(JSON.stringify({ type:"relay", to:activeChat, payload:{ text: msgInput.value }}));
+  addMessage(msgInput.value, "me");
+  chatMemory[activeChat] = chatMemory[activeChat] || [];
+  chatMemory[activeChat].push({ text: msgInput.value, who:"me" });
+  msgInput.value = "";
 }
 
 /* ===== Profile ===== */
-function openProfile(){
+function openProfile() {
   contacts.classList.add("hidden");
   profileView.classList.remove("hidden");
-  nameInput.value=profile.name||"";
+  nameInput.value = profile.name || "";
 }
-function closeProfile(){
+function closeProfile() {
   profileView.classList.add("hidden");
   contacts.classList.remove("hidden");
 }
-function setAvatar(input){
-  const r=new FileReader();
-  r.onload=()=>profile.avatar=r.result;
+function setAvatar(input) {
+  const r = new FileReader();
+  r.onload = () => profile.avatar = r.result;
   r.readAsDataURL(input.files[0]);
 }
-function saveProfile(){
-  profile.name=nameInput.value.trim();
-  localStorage.setItem("profile",JSON.stringify(profile));
+function saveProfile() {
+  profile.name = nameInput.value.trim();
+  localStorage.setItem("profile", JSON.stringify(profile));
   closeProfile();
 }
 
-const contacts=document.getElementById("contacts");
-const chat=document.getElementById("chat");
-const profileView=document.getElementById("profile");
-const users=document.getElementById("users");
-const messages=document.getElementById("messages");
-const chatTitle=document.getElementById("chatTitle");
-const msgInput=document.getElementById("msgInput");
-const nameInput=document.getElementById("nameInput");
-</script>
-
-<script>
-//if ("serviceWorker" in navigator) {
-//  navigator.serviceWorker.register("service-worker.js");
-//}
+/* ===== INITIAL RENDER ===== */
+renderUsers();
 </script>
 
 </body>
 </html>
-
-
