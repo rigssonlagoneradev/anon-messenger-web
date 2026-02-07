@@ -16,7 +16,6 @@ body{margin:0;background:#f0f2f5;height:100vh}
 .user.friend{background:#f0f8ff}
 .left{display:flex;align-items:center;gap:10px}
 .avatar{width:36px;height:36px;border-radius:50%;background:#ccc;background-size:cover;background-position:center}
-.badge{background:#ff3b30;color:#fff;border-radius:10px;padding:2px 6px;font-size:11px;display:none}
 button{padding:6px 10px}
 .hidden{display:none}
 .msg{max-width:75%;margin:6px;padding:10px 14px;border-radius:18px}
@@ -25,18 +24,32 @@ button{padding:6px 10px}
 .inputBar{display:flex;padding:10px;border-top:1px solid #ddd}
 textarea{flex:1;resize:none;padding:10px;border-radius:20px;border:1px solid #ccc}
 .actions button{margin-left:6px}
+.nav{display:flex}
+.nav button{margin-left:6px}
 </style>
 </head>
 
 <body>
 
-<!-- CONTACTS -->
-<div id="contacts" class="view">
+<!-- MAIN (ONLINE USERS) -->
+<div id="onlineView" class="view">
   <div class="header">
-    <span>Contacts</span>
-    <button onclick="openProfile()">👤</button>
+    <span>Online</span>
+    <div class="nav">
+      <button onclick="showContacts()">Contacts</button>
+      <button onclick="openProfile()">👤</button>
+    </div>
   </div>
-  <div class="users" id="users"></div>
+  <div class="users" id="onlineUsers"></div>
+</div>
+
+<!-- CONTACTS (FRIENDS ONLY) -->
+<div id="contactsView" class="view hidden">
+  <div class="header">
+    <button onclick="showOnline()">⬅</button>
+    <span>Contacts</span>
+  </div>
+  <div class="users" id="contactsUsers"></div>
 </div>
 
 <!-- CHAT -->
@@ -64,25 +77,25 @@ textarea{flex:1;resize:none;padding:10px;border-radius:20px;border:1px solid #cc
 
 <script>
 /* ===== Identity ===== */
-let myId=localStorage.getItem("anon_id");
-if(!myId){myId=crypto.randomUUID().replace(/-/g,"");localStorage.setItem("anon_id",myId);}
+let myId=localStorage.getItem("anon_id")||crypto.randomUUID().replace(/-/g,"");
+localStorage.setItem("anon_id",myId);
 
 /* ===== Profile ===== */
 let profile=JSON.parse(localStorage.getItem("profile")||"{}");
 
 /* ===== State ===== */
 let friends=JSON.parse(localStorage.getItem("friends")||"[]");
-let trusted=JSON.parse(localStorage.getItem("trusted")||"[]");
 let pendingIn=JSON.parse(localStorage.getItem("pendingIn")||"[]");
 let pendingOut=JSON.parse(localStorage.getItem("pendingOut")||"[]");
-let unread=JSON.parse(localStorage.getItem("unread")||"{}");
 let chatMemory={};
 let online=new Map();
 let activeChat=null;
 
 /* ===== DOM ===== */
-const users=document.getElementById("users");
-const contacts=document.getElementById("contacts");
+const onlineView=document.getElementById("onlineView");
+const contactsView=document.getElementById("contactsView");
+const onlineUsers=document.getElementById("onlineUsers");
+const contactsUsers=document.getElementById("contactsUsers");
 const chat=document.getElementById("chat");
 const profileView=document.getElementById("profile");
 const messages=document.getElementById("messages");
@@ -92,155 +105,87 @@ const nameInput=document.getElementById("nameInput");
 
 /* ===== WebSocket ===== */
 const ws=new WebSocket("wss://anon-messenger-server-production.up.railway.app");
-
-ws.onopen=()=>{
-  ws.send(JSON.stringify({type:"hello",id:myId,profile}));
-};
+ws.onopen=()=>ws.send(JSON.stringify({type:"hello",id:myId,profile}));
 
 ws.onmessage=e=>{
   const d=JSON.parse(e.data);
-
   if(d.type==="online"){
     online=new Map(d.users.map(u=>[u.id,u]));
-    renderUsers();
+    render();
   }
-
   if(d.type==="relay"){
-    const from=d.from;
-    const text=d.payload.text;
-
-    if(text==="[request]"){
-      if(!pendingIn.includes(from))pendingIn.push(from);
-      save();renderUsers();return;
-    }
-
-    if(text==="[cancel]"){
-      pendingIn=pendingIn.filter(x=>x!==from);
-      save();renderUsers();return;
-    }
-
-    if(text==="[accepted]"){
-      friends.push(from);trusted.push(from);
-      pendingOut=pendingOut.filter(x=>x!==from);
-      save();renderUsers();return;
-    }
-
+    const from=d.from, text=d.payload.text;
+    if(text==="[request]"){ if(!pendingIn.includes(from)) pendingIn.push(from); save(); render(); return; }
+    if(text==="[cancel]"){ pendingIn=pendingIn.filter(x=>x!==from); save(); render(); return; }
+    if(text==="[accepted]"){ friends.push(from); pendingOut=pendingOut.filter(x=>x!==from); save(); render(); return; }
     chatMemory[from]=chatMemory[from]||[];
     chatMemory[from].push({text,who:"them"});
     if(activeChat===from)addMessage(text,"them");
-    else{unread[from]=(unread[from]||0)+1;save();renderUsers();}
   }
 };
 
-/* ===== UI ===== */
-function displayName(id){
-  const u=online.get(id);
-  return u?.profile?.name||id.slice(0,12);
-}
-function avatarUrl(id){
-  return online.get(id)?.profile?.avatar||"";
+/* ===== Rendering ===== */
+function render(){
+  renderOnline();
+  renderContacts();
 }
 
-function renderUsers(){
-  users.innerHTML="";
-  addRow(myId,true);
-  [...online.keys()].filter(id=>id!==myId).forEach(id=>addRow(id,false));
+function renderOnline(){
+  onlineUsers.innerHTML="";
+  online.forEach((u,id)=>{
+    if(id===myId||friends.includes(id)) return;
+    onlineUsers.appendChild(userRow(id,"Add Friend",()=>sendRequest(id)));
+  });
 }
 
-function addRow(id,isYou){
+function renderContacts(){
+  contactsUsers.innerHTML="";
+  friends.forEach(id=>{
+    contactsUsers.appendChild(userRow(id,"Chat",()=>openChat(id),true));
+  });
+}
+
+function userRow(id,label,action,isFriend=false){
   const div=document.createElement("div");
-  div.className="user"+(isYou?" you":"")+(friends.includes(id)?" friend":"");
-  const left=document.createElement("div");left.className="left";
-  const av=document.createElement("div");av.className="avatar";
-  if(isYou&&profile.avatar)av.style.backgroundImage=`url(${profile.avatar})`;
-  if(!isYou&&avatarUrl(id))av.style.backgroundImage=`url(${avatarUrl(id)})`;
-  const name=document.createElement("span");name.textContent=isYou?"You":displayName(id);
+  div.className="user"+(isFriend?" friend":"");
+  const left=document.createElement("div"); left.className="left";
+  const av=document.createElement("div"); av.className="avatar";
+  const u=online.get(id);
+  if(u?.profile?.avatar) av.style.backgroundImage=`url(${u.profile.avatar})`;
+  const name=document.createElement("span");
+  name.textContent=u?.profile?.name||id.slice(0,12);
   left.append(av,name);
-
-  const actions=document.createElement("div");actions.className="actions";
-
-  if(isYou){
-    const b=document.createElement("button");
-    b.textContent="Copy ID";
-    b.onclick=()=>navigator.clipboard.writeText(myId);
-    actions.append(b);
-  }
-  else if(pendingIn.includes(id)){
-    ["Accept","Reject"].forEach(t=>{
-      const b=document.createElement("button");b.textContent=t;
-      b.onclick=()=>{
-        pendingIn=pendingIn.filter(x=>x!==id);
-        if(t==="Accept"){
-          friends.push(id);trusted.push(id);
-          ws.send(JSON.stringify({type:"relay",to:id,payload:{text:"[accepted]"}}));
-        }
-        save();renderUsers();
-      };
-      actions.append(b);
-    });
-  }
-  else if(pendingOut.includes(id)){
-    const b=document.createElement("button");
-    b.textContent="Request Sent";
-    b.onclick=()=>{
-      pendingOut=pendingOut.filter(x=>x!==id);
-      ws.send(JSON.stringify({type:"relay",to:id,payload:{text:"[cancel]"}}));
-      save();renderUsers();
-    };
-    actions.append(b);
-  }
-  else if(!friends.includes(id)){
-    const b=document.createElement("button");
-    b.textContent="Add Friend";
-    b.onclick=()=>{
-      pendingOut.push(id);
-      ws.send(JSON.stringify({type:"relay",to:id,payload:{text:"[request]"}}));
-      save();renderUsers();
-    };
-    actions.append(b);
-  }
-  else{
-    const chatBtn=document.createElement("button");
-    chatBtn.textContent="Chat";
-    chatBtn.onclick=()=>openChat(id);
-    const unfriend=document.createElement("button");
-    unfriend.textContent="Unfriend";
-    unfriend.onclick=()=>{
-      friends=friends.filter(x=>x!==id);
-      trusted=trusted.filter(x=>x!==id);
-      save();renderUsers();
-    };
-    actions.append(chatBtn,unfriend);
-  }
-
-  div.append(left,actions);
-  users.appendChild(div);
+  const btn=document.createElement("button");
+  btn.textContent=label;
+  btn.onclick=action;
+  div.append(left,btn);
+  return div;
 }
 
-/* ===== Chat ===== */
+/* ===== Actions ===== */
+function sendRequest(id){
+  pendingOut.push(id);
+  ws.send(JSON.stringify({type:"relay",to:id,payload:{text:"[request]"}}));
+  save(); render();
+}
+
 function openChat(id){
   activeChat=id;
-  unread[id]=0;save();
   messages.innerHTML="";
   (chatMemory[id]||[]).forEach(m=>addMessage(m.text,m.who));
-  chatTitle.textContent=displayName(id);
-  contacts.classList.add("hidden");
+  chatTitle.textContent=online.get(id)?.profile?.name||id.slice(0,12);
+  onlineView.classList.add("hidden");
+  contactsView.classList.add("hidden");
   chat.classList.remove("hidden");
 }
+
 function closeChat(){
-  if(activeChat)delete chatMemory[activeChat];
+  delete chatMemory[activeChat];
   activeChat=null;
   chat.classList.add("hidden");
-  contacts.classList.remove("hidden");
-  renderUsers();
+  showOnline();
 }
-function addMessage(text,who){
-  const d=document.createElement("div");
-  d.className="msg "+who;
-  d.textContent=text;
-  messages.appendChild(d);
-  messages.scrollTop=messages.scrollHeight;
-}
+
 msgInput.addEventListener("keydown",e=>{
   if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage();}
 });
@@ -251,24 +196,30 @@ function sendMessage(){
   chatMemory[activeChat].push({text:msgInput.value,who:"me"});
   msgInput.value="";
 }
+function addMessage(t,w){
+  const d=document.createElement("div");
+  d.className="msg "+w; d.textContent=t;
+  messages.appendChild(d);
+  messages.scrollTop=messages.scrollHeight;
+}
 
-/* ===== Profile ===== */
-function openProfile(){contacts.classList.add("hidden");profileView.classList.remove("hidden");nameInput.value=profile.name||"";}
-function closeProfile(){profileView.classList.add("hidden");contacts.classList.remove("hidden");}
-function setAvatar(i){const r=new FileReader();r.onload=()=>profile.avatar=r.result;r.readAsDataURL(i.files[0]);}
-function saveProfile(){profile.name=nameInput.value.trim();save();closeProfile();}
+/* ===== Navigation ===== */
+function showContacts(){ onlineView.classList.add("hidden"); contactsView.classList.remove("hidden"); }
+function showOnline(){ contactsView.classList.add("hidden"); onlineView.classList.remove("hidden"); }
+function openProfile(){ onlineView.classList.add("hidden"); profileView.classList.remove("hidden"); nameInput.value=profile.name||""; }
+function closeProfile(){ profileView.classList.add("hidden"); showOnline(); }
+function setAvatar(i){const r=new FileReader(); r.onload=()=>profile.avatar=r.result; r.readAsDataURL(i.files[0]);}
+function saveProfile(){ profile.name=nameInput.value.trim(); save(); closeProfile(); }
 
-/* ===== Utils ===== */
+/* ===== Storage ===== */
 function save(){
   localStorage.setItem("friends",JSON.stringify(friends));
-  localStorage.setItem("trusted",JSON.stringify(trusted));
   localStorage.setItem("pendingIn",JSON.stringify(pendingIn));
   localStorage.setItem("pendingOut",JSON.stringify(pendingOut));
-  localStorage.setItem("unread",JSON.stringify(unread));
   localStorage.setItem("profile",JSON.stringify(profile));
 }
 
-renderUsers();
+render();
 </script>
 </body>
 </html>
