@@ -9,100 +9,94 @@
 * { box-sizing: border-box; font-family: system-ui; }
 body { margin: 0; background: #f0f2f5; height: 100vh; }
 
-#app { height: 100vh; display: flex; flex-direction: column; }
+#contacts, #chat { height: 100vh; display: flex; flex-direction: column; }
 
 .header {
-  background: #1877f2;
-  color: white;
-  padding: 14px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  background: #1877f2; color: white; padding: 14px;
+  display: flex; align-items: center; justify-content: space-between;
 }
 
-.users, .messages {
-  flex: 1;
-  background: white;
-  overflow-y: auto;
-}
+.status { padding: 8px; background: #fff; font-size: 13px; }
+
+.users { flex: 1; background: #fff; overflow-y: auto; }
 
 .user {
-  padding: 14px;
-  border-bottom: 1px solid #eee;
-  cursor: pointer;
+  padding: 12px; border-bottom: 1px solid #eee;
+  display: flex; justify-content: space-between; align-items: center;
 }
 
+.user.you { background: #f5f5f5; font-weight: bold; }
 .user.friend { background: #f0f8ff; }
 
-.chat {
-  display: none;
-  flex-direction: column;
-  height: 100vh;
+.badge {
+  background: #ff3b30; color: white;
+  border-radius: 12px; padding: 2px 6px;
+  font-size: 11px; display: none;
 }
+
+#chat { display: none; background: #fff; }
+
+.messages { flex: 1; padding: 10px; overflow-y: auto; }
 
 .msg {
-  padding: 8px 14px;
-  margin: 6px;
-  border-radius: 18px;
-  max-width: 70%;
+  max-width: 75%; margin: 6px 0;
+  padding: 10px 14px; border-radius: 18px;
 }
-
 .me { background: #1877f2; color: white; margin-left: auto; }
 .them { background: #e4e6eb; }
 
 .inputBar {
-  display: flex;
-  padding: 10px;
-  border-top: 1px solid #ccc;
+  display: flex; padding: 10px; border-top: 1px solid #ddd;
 }
-
-.inputBar input {
-  flex: 1;
-  padding: 10px;
-  border-radius: 20px;
-  border: 1px solid #ccc;
+.inputBar textarea {
+  flex: 1; resize: none; padding: 10px;
+  border-radius: 20px; border: 1px solid #ccc;
 }
-
-button { padding: 10px; margin-left: 6px; }
 </style>
 </head>
 
 <body>
 
-<div id="app">
+<div id="contacts">
   <div class="header">Contacts</div>
+  <div class="status" id="status">Connecting…</div>
   <div class="users" id="users"></div>
 </div>
 
-<div class="chat" id="chat">
+<div id="chat">
   <div class="header">
     <button onclick="closeChat()">⬅</button>
     <span id="chatTitle"></span>
   </div>
   <div class="messages" id="messages"></div>
   <div class="inputBar">
-    <input id="msgInput" placeholder="Type message">
-    <button onclick="sendMessage()">Send</button>
+    <textarea id="msgInput" rows="1" placeholder="Type a message"></textarea>
   </div>
 </div>
 
 <script>
 const SERVER_URL = "wss://anon-messenger-server-production.up.railway.app";
 
-const myId = localStorage.getItem("anon_identity")
-  || (localStorage.setItem("anon_identity", crypto.randomUUID()), localStorage.getItem("anon_identity"));
+let myId = localStorage.getItem("anon_identity") ||
+  (localStorage.setItem("anon_identity", crypto.randomUUID()), localStorage.getItem("anon_identity"));
 
 let friends = JSON.parse(localStorage.getItem("friends") || "[]");
-let ws, activeChat = null;
+let trusted = JSON.parse(localStorage.getItem("trusted") || "[]");
+let unread = JSON.parse(localStorage.getItem("unread") || "{}");
 
+let onlineSet = new Set();
+let activeChat = null;
+let chatMemory = {}; // ephemeral
+
+const ws = new WebSocket(SERVER_URL);
 const usersEl = document.getElementById("users");
-const chatEl = document.getElementById("chat");
 const messagesEl = document.getElementById("messages");
+const chatEl = document.getElementById("chat");
+const contactsEl = document.getElementById("contacts");
 const chatTitle = document.getElementById("chatTitle");
 
-ws = new WebSocket(SERVER_URL);
-
 ws.onopen = () => {
+  document.getElementById("status").textContent = "Online";
   ws.send(JSON.stringify({ type: "hello", publicKey: myId }));
 };
 
@@ -110,83 +104,84 @@ ws.onmessage = ev => {
   const data = JSON.parse(ev.data);
 
   if (data.type === "online") {
-    renderUsers(data.users);
+    onlineSet = new Set(data.users);
+    renderUsers();
   }
 
   if (data.type === "relay") {
-    handleRelay(data.from, data.payload);
+    const from = data.from;
+    const text = data.payload.text;
+
+    if (!chatMemory[from]) chatMemory[from] = [];
+    chatMemory[from].push({ text, who: "them" });
+
+    if (activeChat === from) {
+      addMessage(text, "them");
+    } else {
+      unread[from] = (unread[from] || 0) + 1;
+      localStorage.setItem("unread", JSON.stringify(unread));
+      renderUsers();
+    }
   }
 };
 
-function renderUsers(online) {
+function renderUsers() {
   usersEl.innerHTML = "";
-  friends.forEach(id => {
-    if (!online.includes(id)) return;
-    const div = document.createElement("div");
-    div.className = "user friend";
-    div.textContent = id.slice(0, 12) + " (online)";
-    div.onclick = () => requestChat(id);
-    usersEl.appendChild(div);
-  });
+
+  addRow(myId, true);
+  [...onlineSet].filter(id => id !== myId).forEach(id => addRow(id, false));
 }
 
-function requestChat(id) {
-  ws.send(JSON.stringify({
-    type: "relay",
-    to: id,
-    payload: { type: "request" }
-  }));
-  alert("Chat request sent");
-}
+function addRow(id, isYou) {
+  const div = document.createElement("div");
+  div.className = "user" + (isYou ? " you" : "") + (friends.includes(id) ? " friend" : "");
 
-function handleRelay(from, payload) {
-  if (payload.type === "request") {
-    const ok = confirm("Chat request from a friend. Accept?");
-    if (ok) {
-      openChat(from);
-      ws.send(JSON.stringify({
-        type: "relay",
-        to: from,
-        payload: { type: "accept" }
-      }));
-    }
+  const label = document.createElement("span");
+  label.textContent = isYou ? "You" : id.slice(0,12);
+
+  const badge = document.createElement("span");
+  badge.className = "badge";
+  if (unread[id]) { badge.textContent = unread[id]; badge.style.display = "inline-block"; }
+
+  const btn = document.createElement("button");
+
+  if (isYou) {
+    btn.textContent = "Copy ID";
+    btn.onclick = () => navigator.clipboard.writeText(myId);
+  } else if (trusted.includes(id)) {
+    btn.textContent = "Chat";
+    btn.onclick = () => openChat(id);
+  } else {
+    btn.textContent = "Request";
+    btn.onclick = () => {
+      ws.send(JSON.stringify({ type: "relay", to: id, payload: { text: "[request]" } }));
+      alert("Request sent");
+    };
   }
 
-  if (payload.type === "accept") {
-    openChat(from);
-  }
-
-  if (payload.type === "message" && activeChat === from) {
-    addMessage(payload.text, "them");
-  }
+  div.append(label, badge, btn);
+  usersEl.appendChild(div);
 }
 
 function openChat(id) {
   activeChat = id;
-  chatTitle.textContent = id.slice(0, 12);
-  document.getElementById("app").style.display = "none";
-  chatEl.style.display = "flex";
+  unread[id] = 0;
+  localStorage.setItem("unread", JSON.stringify(unread));
+
   messagesEl.innerHTML = "";
+  (chatMemory[id] || []).forEach(m => addMessage(m.text, m.who));
+
+  chatTitle.textContent = id.slice(0,12);
+  contactsEl.style.display = "none";
+  chatEl.style.display = "flex";
 }
 
 function closeChat() {
+  if (activeChat) delete chatMemory[activeChat];
   activeChat = null;
   chatEl.style.display = "none";
-  document.getElementById("app").style.display = "flex";
-}
-
-function sendMessage() {
-  const input = document.getElementById("msgInput");
-  if (!input.value || !activeChat) return;
-
-  ws.send(JSON.stringify({
-    type: "relay",
-    to: activeChat,
-    payload: { type: "message", text: input.value }
-  }));
-
-  addMessage(input.value, "me");
-  input.value = "";
+  contactsEl.style.display = "flex";
+  renderUsers();
 }
 
 function addMessage(text, who) {
@@ -195,6 +190,30 @@ function addMessage(text, who) {
   div.textContent = text;
   messagesEl.appendChild(div);
   messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+const input = document.getElementById("msgInput");
+input.addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+function sendMessage() {
+  if (!activeChat || !input.value.trim()) return;
+
+  ws.send(JSON.stringify({
+    type: "relay",
+    to: activeChat,
+    payload: { text: input.value }
+  }));
+
+  addMessage(input.value, "me");
+  if (!chatMemory[activeChat]) chatMemory[activeChat] = [];
+  chatMemory[activeChat].push({ text: input.value, who: "me" });
+
+  input.value = "";
 }
 </script>
 
