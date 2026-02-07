@@ -12,10 +12,13 @@ body{margin:0;background:#f0f2f5;height:100vh}
 .header{background:#1877f2;color:#fff;padding:14px;display:flex;justify-content:space-between;align-items:center}
 .users,.messages{flex:1;background:#fff;overflow-y:auto}
 .user{padding:12px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center}
-.user.you{background:#f5f5f5;font-weight:bold}
 .user.friend{background:#f0f8ff}
 .left{display:flex;align-items:center;gap:10px}
+.avatarWrap{position:relative}
 .avatar{width:36px;height:36px;border-radius:50%;background:#ccc;background-size:cover;background-position:center}
+.status{width:10px;height:10px;border-radius:50%;position:absolute;bottom:-1px;right:-1px;border:2px solid #fff}
+.online{background:#2ecc71}
+.offline{background:#aaa}
 button{padding:6px 10px}
 .hidden{display:none}
 .msg{max-width:75%;margin:6px;padding:10px 14px;border-radius:18px}
@@ -24,26 +27,25 @@ button{padding:6px 10px}
 .inputBar{display:flex;padding:10px;border-top:1px solid #ddd}
 textarea{flex:1;resize:none;padding:10px;border-radius:20px;border:1px solid #ccc}
 .actions button{margin-left:6px}
-.nav{display:flex}
 .nav button{margin-left:6px}
 </style>
 </head>
 
 <body>
 
-<!-- MAIN (ONLINE USERS) -->
+<!-- ONLINE USERS -->
 <div id="onlineView" class="view">
   <div class="header">
     <span>Online</span>
     <div class="nav">
       <button onclick="showContacts()">Contacts</button>
-      <button onclick="openProfile()">👤</button>
+      <button id="profileBtn" onclick="openProfile()">👤</button>
     </div>
   </div>
   <div class="users" id="onlineUsers"></div>
 </div>
 
-<!-- CONTACTS (FRIENDS ONLY) -->
+<!-- CONTACTS -->
 <div id="contactsView" class="view hidden">
   <div class="header">
     <button onclick="showOnline()">⬅</button>
@@ -77,111 +79,167 @@ textarea{flex:1;resize:none;padding:10px;border-radius:20px;border:1px solid #cc
 
 <script>
 /* ===== Identity ===== */
-let myId=localStorage.getItem("anon_id")||crypto.randomUUID().replace(/-/g,"");
-localStorage.setItem("anon_id",myId);
+let myId = localStorage.getItem("anon_id") || crypto.randomUUID().replace(/-/g,"");
+localStorage.setItem("anon_id", myId);
 
 /* ===== Profile ===== */
-let profile=JSON.parse(localStorage.getItem("profile")||"{}");
+let profile = JSON.parse(localStorage.getItem("profile") || "{}");
 
 /* ===== State ===== */
-let friends=JSON.parse(localStorage.getItem("friends")||"[]");
-let pendingIn=JSON.parse(localStorage.getItem("pendingIn")||"[]");
-let pendingOut=JSON.parse(localStorage.getItem("pendingOut")||"[]");
-let chatMemory={};
-let online=new Map();
-let activeChat=null;
+let friends = JSON.parse(localStorage.getItem("friends") || "[]");
+let pendingIn = JSON.parse(localStorage.getItem("pendingIn") || "[]");
+let pendingOut = JSON.parse(localStorage.getItem("pendingOut") || "[]");
+let chatMemory = {};
+let online = new Map();
+let activeChat = null;
 
 /* ===== DOM ===== */
-const onlineView=document.getElementById("onlineView");
-const contactsView=document.getElementById("contactsView");
-const onlineUsers=document.getElementById("onlineUsers");
-const contactsUsers=document.getElementById("contactsUsers");
-const chat=document.getElementById("chat");
-const profileView=document.getElementById("profile");
-const messages=document.getElementById("messages");
-const chatTitle=document.getElementById("chatTitle");
-const msgInput=document.getElementById("msgInput");
-const nameInput=document.getElementById("nameInput");
+const onlineView = document.getElementById("onlineView");
+const contactsView = document.getElementById("contactsView");
+const onlineUsers = document.getElementById("onlineUsers");
+const contactsUsers = document.getElementById("contactsUsers");
+const chat = document.getElementById("chat");
+const profileView = document.getElementById("profile");
+const profileBtn = document.getElementById("profileBtn");
+const messages = document.getElementById("messages");
+const chatTitle = document.getElementById("chatTitle");
+const msgInput = document.getElementById("msgInput");
+const nameInput = document.getElementById("nameInput");
 
 /* ===== WebSocket ===== */
-const ws=new WebSocket("wss://anon-messenger-server-production.up.railway.app");
-ws.onopen=()=>ws.send(JSON.stringify({type:"hello",id:myId,profile}));
+const ws = new WebSocket("wss://anon-messenger-server-production.up.railway.app");
 
-ws.onmessage=e=>{
-  const d=JSON.parse(e.data);
-  if(d.type==="online"){
-    online=new Map(d.users.map(u=>[u.id,u]));
+ws.onopen = () => {
+  ws.send(JSON.stringify({ type:"hello", id:myId, profile }));
+};
+
+ws.onmessage = e => {
+  const d = JSON.parse(e.data);
+
+  if (d.type === "online") {
+    online = new Map(d.users.map(u => [u.id, u]));
     render();
   }
-  if(d.type==="relay"){
-    const from=d.from, text=d.payload.text;
-    if(text==="[request]"){ if(!pendingIn.includes(from)) pendingIn.push(from); save(); render(); return; }
-    if(text==="[cancel]"){ pendingIn=pendingIn.filter(x=>x!==from); save(); render(); return; }
-    if(text==="[accepted]"){ friends.push(from); pendingOut=pendingOut.filter(x=>x!==from); save(); render(); return; }
-    chatMemory[from]=chatMemory[from]||[];
-    chatMemory[from].push({text,who:"them"});
-    if(activeChat===from)addMessage(text,"them");
+
+  if (d.type === "profile_update") {
+    if (online.has(d.from)) {
+      online.get(d.from).profile = d.profile;
+      render();
+    }
+  }
+
+  if (d.type === "relay") {
+    const from = d.from, text = d.payload.text;
+
+    if (text === "[request]") {
+      if (!pendingIn.includes(from)) pendingIn.push(from);
+      save(); render(); return;
+    }
+    if (text === "[cancel]") {
+      pendingIn = pendingIn.filter(x => x !== from);
+      save(); render(); return;
+    }
+    if (text === "[accepted]") {
+      friends.push(from);
+      pendingOut = pendingOut.filter(x => x !== from);
+      save(); render(); return;
+    }
+
+    chatMemory[from] = chatMemory[from] || [];
+    chatMemory[from].push({ text, who:"them" });
+    if (activeChat === from) addMessage(text,"them");
   }
 };
 
 /* ===== Rendering ===== */
-function render(){
+function render() {
   renderOnline();
   renderContacts();
 }
 
-function renderOnline(){
-  onlineUsers.innerHTML="";
-  online.forEach((u,id)=>{
-    if(id===myId||friends.includes(id)) return;
-    onlineUsers.appendChild(userRow(id,"Add Friend",()=>sendRequest(id)));
+function renderOnline() {
+  onlineUsers.innerHTML = "";
+  online.forEach((u,id) => {
+    if (id === myId || friends.includes(id)) return;
+    onlineUsers.appendChild(userRow(id,true));
   });
 }
 
-function renderContacts(){
-  contactsUsers.innerHTML="";
-  friends.forEach(id=>{
-    contactsUsers.appendChild(userRow(id,"Chat",()=>openChat(id),true));
+function renderContacts() {
+  contactsUsers.innerHTML = "";
+  friends.forEach(id => {
+    contactsUsers.appendChild(userRow(id,false,true));
   });
 }
 
-function userRow(id,label,action,isFriend=false){
-  const div=document.createElement("div");
-  div.className="user"+(isFriend?" friend":"");
-  const left=document.createElement("div"); left.className="left";
-  const av=document.createElement("div"); av.className="avatar";
-  const u=online.get(id);
-  if(u?.profile?.avatar) av.style.backgroundImage=`url(${u.profile.avatar})`;
-  const name=document.createElement("span");
-  name.textContent=u?.profile?.name||id.slice(0,12);
-  left.append(av,name);
-  const btn=document.createElement("button");
-  btn.textContent=label;
-  btn.onclick=action;
-  div.append(left,btn);
+function userRow(id,isOnline,isFriend=false) {
+  const div = document.createElement("div");
+  div.className = "user"+(isFriend?" friend":"");
+
+  const left = document.createElement("div");
+  left.className = "left";
+
+  const wrap = document.createElement("div");
+  wrap.className = "avatarWrap";
+
+  const av = document.createElement("div");
+  av.className = "avatar";
+  const u = online.get(id);
+  if (u?.profile?.avatar) av.style.backgroundImage = `url(${u.profile.avatar})`;
+
+  const st = document.createElement("div");
+  st.className = "status "+(online.has(id)?"online":"offline");
+
+  wrap.append(av,st);
+
+  const name = document.createElement("span");
+  name.textContent = u?.profile?.name || id.slice(0,12);
+
+  left.append(wrap,name);
+
+  const actions = document.createElement("div");
+
+  if (!isFriend) {
+    const b = document.createElement("button");
+    b.textContent = pendingOut.includes(id) ? "Request Sent" : "Add Friend";
+    b.onclick = () => {
+      if (pendingOut.includes(id)) {
+        pendingOut = pendingOut.filter(x=>x!==id);
+        ws.send(JSON.stringify({type:"relay",to:id,payload:{text:"[cancel]"}}));
+      } else {
+        pendingOut.push(id);
+        ws.send(JSON.stringify({type:"relay",to:id,payload:{text:"[request]"}}));
+      }
+      save(); render();
+    };
+    actions.appendChild(b);
+  } else {
+    const chatBtn = document.createElement("button");
+    chatBtn.textContent = "Chat";
+    chatBtn.onclick = () => openChat(id);
+    actions.appendChild(chatBtn);
+  }
+
+  div.append(left,actions);
   return div;
 }
 
-/* ===== Actions ===== */
-function sendRequest(id){
-  pendingOut.push(id);
-  ws.send(JSON.stringify({type:"relay",to:id,payload:{text:"[request]"}}));
-  save(); render();
-}
-
-function openChat(id){
-  activeChat=id;
-  messages.innerHTML="";
+/* ===== Chat ===== */
+function openChat(id) {
+  activeChat = id;
+  profileBtn.disabled = true;
+  messages.innerHTML = "";
   (chatMemory[id]||[]).forEach(m=>addMessage(m.text,m.who));
-  chatTitle.textContent=online.get(id)?.profile?.name||id.slice(0,12);
+  chatTitle.textContent = online.get(id)?.profile?.name || id.slice(0,12);
   onlineView.classList.add("hidden");
   contactsView.classList.add("hidden");
   chat.classList.remove("hidden");
 }
 
-function closeChat(){
+function closeChat() {
   delete chatMemory[activeChat];
-  activeChat=null;
+  activeChat = null;
+  profileBtn.disabled = false;
   chat.classList.add("hidden");
   showOnline();
 }
@@ -189,27 +247,49 @@ function closeChat(){
 msgInput.addEventListener("keydown",e=>{
   if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage();}
 });
-function sendMessage(){
-  if(!activeChat||!msgInput.value.trim())return;
+
+function sendMessage() {
+  if(!activeChat||!msgInput.value.trim()) return;
   ws.send(JSON.stringify({type:"relay",to:activeChat,payload:{text:msgInput.value}}));
   addMessage(msgInput.value,"me");
   chatMemory[activeChat].push({text:msgInput.value,who:"me"});
   msgInput.value="";
 }
+
 function addMessage(t,w){
   const d=document.createElement("div");
-  d.className="msg "+w; d.textContent=t;
+  d.className="msg "+w;
+  d.textContent=t;
   messages.appendChild(d);
   messages.scrollTop=messages.scrollHeight;
 }
 
-/* ===== Navigation ===== */
+/* ===== Profile ===== */
+function openProfile(){
+  if(activeChat) return;
+  onlineView.classList.add("hidden");
+  profileView.classList.remove("hidden");
+  nameInput.value = profile.name || "";
+}
+function closeProfile(){
+  profileView.classList.add("hidden");
+  showOnline();
+}
+function setAvatar(i){
+  const r=new FileReader();
+  r.onload=()=>profile.avatar=r.result;
+  r.readAsDataURL(i.files[0]);
+}
+function saveProfile(){
+  profile.name = nameInput.value.trim();
+  save();
+  ws.send(JSON.stringify({type:"profile_update",profile}));
+  closeProfile();
+}
+
+/* ===== Nav ===== */
 function showContacts(){ onlineView.classList.add("hidden"); contactsView.classList.remove("hidden"); }
 function showOnline(){ contactsView.classList.add("hidden"); onlineView.classList.remove("hidden"); }
-function openProfile(){ onlineView.classList.add("hidden"); profileView.classList.remove("hidden"); nameInput.value=profile.name||""; }
-function closeProfile(){ profileView.classList.add("hidden"); showOnline(); }
-function setAvatar(i){const r=new FileReader(); r.onload=()=>profile.avatar=r.result; r.readAsDataURL(i.files[0]);}
-function saveProfile(){ profile.name=nameInput.value.trim(); save(); closeProfile(); }
 
 /* ===== Storage ===== */
 function save(){
