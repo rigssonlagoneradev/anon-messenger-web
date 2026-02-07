@@ -1,251 +1,200 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Anonymous Messenger</title>
 
 <style>
-* {
-  box-sizing: border-box;
-  font-family: system-ui;
-}
+* { box-sizing: border-box; font-family: system-ui; }
+body { margin: 0; background: #f0f2f5; height: 100vh; }
 
-body {
-  margin: 0;
-  background: #f0f2f5;
-  height: 100vh;
-}
+#app { height: 100vh; display: flex; flex-direction: column; }
 
-/* APP */
-#app {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-/* HEADER */
 .header {
   background: #1877f2;
   color: white;
   padding: 14px;
-  font-weight: bold;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.header button {
-  background: rgba(255,255,255,0.2);
-  color: white;
-  border: none;
-  padding: 6px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-/* STATUS */
-.status {
-  padding: 10px;
-  background: #fff;
-  font-size: 14px;
-  border-bottom: 1px solid #ddd;
-}
-
-/* USER LIST */
-.users {
+.users, .messages {
   flex: 1;
-  background: #fff;
+  background: white;
   overflow-y: auto;
 }
 
 .user {
   padding: 14px;
   border-bottom: 1px solid #eee;
-  font-size: 14px;
-  display: flex;
-  justify-content: space-between;
+  cursor: pointer;
 }
 
-.user.you {
-  font-weight: bold;
-}
+.user.friend { background: #f0f8ff; }
 
-.user.friend {
-  background: #f0f8ff;
-}
-
-.user.offline {
-  opacity: 0.5;
-}
-
-/* MODAL */
-#modal {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.4);
+.chat {
   display: none;
-  justify-content: center;
-  align-items: center;
+  flex-direction: column;
+  height: 100vh;
 }
 
-.modal-box {
-  background: white;
-  padding: 20px;
-  border-radius: 10px;
-  width: 90%;
-  max-width: 320px;
+.msg {
+  padding: 8px 14px;
+  margin: 6px;
+  border-radius: 18px;
+  max-width: 70%;
 }
 
-.modal-box h3 {
-  margin-top: 0;
-}
+.me { background: #1877f2; color: white; margin-left: auto; }
+.them { background: #e4e6eb; }
 
-.modal-box input {
-  width: 100%;
+.inputBar {
+  display: flex;
   padding: 10px;
-  margin-top: 10px;
+  border-top: 1px solid #ccc;
 }
 
-.modal-box button {
-  margin-top: 10px;
-  width: 100%;
+.inputBar input {
+  flex: 1;
   padding: 10px;
+  border-radius: 20px;
+  border: 1px solid #ccc;
 }
+
+button { padding: 10px; margin-left: 6px; }
 </style>
 </head>
 
 <body>
 
 <div id="app">
-  <div class="header">
-    <span>Anonymous Messenger</span>
-    <button onclick="openModal()">➕ Add Friend</button>
-  </div>
-
-  <div class="status" id="status">Connecting…</div>
+  <div class="header">Contacts</div>
   <div class="users" id="users"></div>
 </div>
 
-<!-- ADD FRIEND MODAL -->
-<div id="modal">
-  <div class="modal-box">
-    <h3>Add Friend</h3>
-    <p>Paste their code:</p>
-    <input id="friendInput" placeholder="Friend ID">
-    <button onclick="addFriend()">Add</button>
-    <button onclick="closeModal()">Cancel</button>
+<div class="chat" id="chat">
+  <div class="header">
+    <button onclick="closeChat()">⬅</button>
+    <span id="chatTitle"></span>
+  </div>
+  <div class="messages" id="messages"></div>
+  <div class="inputBar">
+    <input id="msgInput" placeholder="Type message">
+    <button onclick="sendMessage()">Send</button>
   </div>
 </div>
 
 <script>
-/* =========================
-   CONFIG
-   ========================= */
 const SERVER_URL = "wss://anon-messenger-server-production.up.railway.app";
 
-/* =========================
-   IDENTITY
-   ========================= */
-function getIdentity() {
-  let id = localStorage.getItem("anon_identity");
-  if (!id) {
-    id = crypto.randomUUID().replace(/-/g, "");
-    localStorage.setItem("anon_identity", id);
-  }
-  return id;
-}
+const myId = localStorage.getItem("anon_identity")
+  || (localStorage.setItem("anon_identity", crypto.randomUUID()), localStorage.getItem("anon_identity"));
 
-const myId = getIdentity();
+let friends = JSON.parse(localStorage.getItem("friends") || "[]");
+let ws, activeChat = null;
 
-/* =========================
-   FRIENDS
-   ========================= */
-function getFriends() {
-  return JSON.parse(localStorage.getItem("friends") || "[]");
-}
-
-function saveFriends(list) {
-  localStorage.setItem("friends", JSON.stringify(list));
-}
-
-let friends = getFriends();
-
-/* =========================
-   WEBSOCKET
-   ========================= */
-const statusEl = document.getElementById("status");
 const usersEl = document.getElementById("users");
+const chatEl = document.getElementById("chat");
+const messagesEl = document.getElementById("messages");
+const chatTitle = document.getElementById("chatTitle");
 
-let ws = new WebSocket(SERVER_URL);
+ws = new WebSocket(SERVER_URL);
 
 ws.onopen = () => {
-  statusEl.textContent = "Online";
-  ws.send(JSON.stringify({
-    type: "hello",
-    publicKey: myId
-  }));
+  ws.send(JSON.stringify({ type: "hello", publicKey: myId }));
 };
-
-ws.onclose = () => statusEl.textContent = "Disconnected";
-ws.onerror = () => statusEl.textContent = "Connection error";
 
 ws.onmessage = ev => {
   const data = JSON.parse(ev.data);
+
   if (data.type === "online") {
     renderUsers(data.users);
   }
+
+  if (data.type === "relay") {
+    handleRelay(data.from, data.payload);
+  }
 };
 
-/* =========================
-   UI
-   ========================= */
-function renderUsers(onlineList) {
+function renderUsers(online) {
   usersEl.innerHTML = "";
-
-  // Show friends first
   friends.forEach(id => {
-    const online = onlineList.includes(id);
+    if (!online.includes(id)) return;
     const div = document.createElement("div");
-    div.className = "user friend" + (online ? "" : " offline");
-    div.textContent = id.slice(0, 12) + (online ? " (online)" : " (offline)");
-    usersEl.appendChild(div);
-  });
-
-  // Show non-friends
-  onlineList.forEach(id => {
-    if (id === myId || friends.includes(id)) return;
-    const div = document.createElement("div");
-    div.className = "user";
-    div.textContent = id === myId ? "You" : id.slice(0, 12);
+    div.className = "user friend";
+    div.textContent = id.slice(0, 12) + " (online)";
+    div.onclick = () => requestChat(id);
     usersEl.appendChild(div);
   });
 }
 
-/* =========================
-   MODAL LOGIC
-   ========================= */
-function openModal() {
-  document.getElementById("modal").style.display = "flex";
+function requestChat(id) {
+  ws.send(JSON.stringify({
+    type: "relay",
+    to: id,
+    payload: { type: "request" }
+  }));
+  alert("Chat request sent");
 }
 
-function closeModal() {
-  document.getElementById("modal").style.display = "none";
-}
-
-function addFriend() {
-  const input = document.getElementById("friendInput");
-  const id = input.value.trim();
-
-  if (!id || id === myId || friends.includes(id)) {
-    closeModal();
-    return;
+function handleRelay(from, payload) {
+  if (payload.type === "request") {
+    const ok = confirm("Chat request from a friend. Accept?");
+    if (ok) {
+      openChat(from);
+      ws.send(JSON.stringify({
+        type: "relay",
+        to: from,
+        payload: { type: "accept" }
+      }));
+    }
   }
 
-  friends.push(id);
-  saveFriends(friends);
+  if (payload.type === "accept") {
+    openChat(from);
+  }
+
+  if (payload.type === "message" && activeChat === from) {
+    addMessage(payload.text, "them");
+  }
+}
+
+function openChat(id) {
+  activeChat = id;
+  chatTitle.textContent = id.slice(0, 12);
+  document.getElementById("app").style.display = "none";
+  chatEl.style.display = "flex";
+  messagesEl.innerHTML = "";
+}
+
+function closeChat() {
+  activeChat = null;
+  chatEl.style.display = "none";
+  document.getElementById("app").style.display = "flex";
+}
+
+function sendMessage() {
+  const input = document.getElementById("msgInput");
+  if (!input.value || !activeChat) return;
+
+  ws.send(JSON.stringify({
+    type: "relay",
+    to: activeChat,
+    payload: { type: "message", text: input.value }
+  }));
+
+  addMessage(input.value, "me");
   input.value = "";
-  closeModal();
+}
+
+function addMessage(text, who) {
+  const div = document.createElement("div");
+  div.className = "msg " + who;
+  div.textContent = text;
+  messagesEl.appendChild(div);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
 }
 </script>
 
