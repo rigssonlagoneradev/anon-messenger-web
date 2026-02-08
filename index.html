@@ -240,6 +240,7 @@ supa.auth.onAuthStateChange(async (_, session) => {
    AUTH ACTIONS
 ================================ */
 loginBtn.onclick = async () => {
+  alert("Login Button Clicked")
   if (!email.value || !password.value) {
     alert("Enter email and password");
     return;
@@ -288,3 +289,4 @@ backBtn.onclick = showHome;
 
 </body>
 </html>
+
