@@ -5,194 +5,201 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>AnonyMouse</title>
 
-<!-- Supabase SDK (defines window.supabase) -->
-<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<!-- Supabase CDN (ONLY ONCE) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-body {
-  margin:0;
-  font-family:system-ui,-apple-system;
-  background:#f2f4f8;
+:root {
+  --bg: #f2f4f8;
+  --card: #ffffff;
+  --blue: #1f6feb;
 }
 
+* { box-sizing: border-box; font-family: system-ui, -apple-system; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+}
+
+/* CENTERED AUTH CARD */
 .center {
-  min-height:100vh;
-  display:flex;
-  justify-content:center;
-  align-items:center;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .card {
-  background:#fff;
-  width:90%;
-  max-width:380px;
-  padding:24px;
-  border-radius:16px;
-  box-shadow:0 10px 30px rgba(0,0,0,.15);
-  text-align:center;
+  width: 320px;
+  background: var(--card);
+  padding: 24px;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.1);
+  text-align: center;
 }
 
-input,button {
-  width:100%;
-  padding:12px;
-  margin-top:10px;
-  font-size:16px;
-  border-radius:8px;
+.logo {
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 10px;
 }
+
+h2 { margin: 8px 0; }
 
 input {
-  border:1px solid #ddd;
+  width: 100%;
+  padding: 12px;
+  margin: 8px 0;
+  border-radius: 10px;
+  border: 1px solid #ddd;
 }
 
 button {
-  border:none;
-  background:#1e73e8;
-  color:#fff;
-  cursor:pointer;
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  border-radius: 10px;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
 }
 
-button.secondary {
-  background:#e5e7eb;
-  color:#333;
-}
+.primary { background: var(--blue); color: white; }
+.secondary { background: #e5e7eb; }
 
+small { color: #666; display: block; margin-top: 12px; }
+
+/* APP VIEW */
 #app {
-  display:none;
+  display: none;
+  height: 100vh;
+}
+
+header {
+  background: var(--blue);
+  color: white;
+  padding: 14px;
+  text-align: center;
 }
 </style>
 </head>
 
 <body>
 
-<!-- AUTH -->
+<!-- AUTH VIEW -->
 <div id="auth" class="center">
   <div class="card">
-
-    <!-- Mouse logo -->
-    <svg width="70" viewBox="0 0 100 100">
-      <circle cx="50" cy="58" r="28" fill="#1e73e8"/>
-      <circle cx="32" cy="36" r="14" fill="#1e73e8"/>
-      <circle cx="68" cy="36" r="14" fill="#1e73e8"/>
-      <circle cx="44" cy="55" r="4" fill="#fff"/>
-      <circle cx="56" cy="55" r="4" fill="#fff"/>
-      <circle cx="50" cy="63" r="3" fill="#fff"/>
-    </svg>
-
+    <img class="logo" src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Mouse_icon.svg/512px-Mouse_icon.svg.png" />
     <h2>Welcome to AnonyMouse</h2>
-    <p>Private. Anonymous. No history.</p>
+    <small>Private. Anonymous. No history.</small>
 
-    <input id="username" placeholder="Username">
-    <input id="password" type="password" placeholder="Password">
+    <input id="username" placeholder="Username" />
+    <input id="password" type="password" placeholder="Password" />
 
-    <button id="loginBtn">Login</button>
-    <button id="createBtn" class="secondary">Create Account</button>
+    <button class="primary" id="loginBtn">Login</button>
+    <button class="secondary" id="createBtn">Create Account</button>
 
-    <small>⚠️ No account recovery</small>
+    <small>⚠ No recovery. Lost = gone.</small>
   </div>
 </div>
 
-<!-- APP -->
-<div id="app" class="center">
-  <div class="card">
-    <h2 id="welcome"></h2>
-  </div>
+<!-- APP VIEW -->
+<div id="app">
+  <header>
+    Welcome, <span id="displayName"></span>
+  </header>
 </div>
 
 <script>
-/* =========================
-   SUPABASE CLIENT (SAFE)
-========================= */
-const sb = window.supabase.createClient(
-  "https://mdfwcpzxanraetentncb.supabase.co",
-  "sb_publishable_A9j8VGIbz-JikQzjbSm9vw_0qhrOLTk"
+/* ============================
+   SUPABASE INIT (ONLY ONCE)
+============================ */
+const SUPABASE_URL = "https://mdfwcpzxanraetentncb.supabase.co";
+const SUPABASE_KEY = "sb_publishable_A9j8VGIbz-JikQzjbSm9vw_0qhrOLTk";
+
+const supabase = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
 );
 
-/* DOM */
-const auth = document.getElementById("auth");
-const app = document.getElementById("app");
-const usernameInput = document.getElementById("username");
-const passwordInput = document.getElementById("password");
-const welcome = document.getElementById("welcome");
+/* ============================
+   UI HELPERS
+============================ */
+const authView = document.getElementById("auth");
+const appView = document.getElementById("app");
+const displayName = document.getElementById("displayName");
 
-document.getElementById("loginBtn").onclick = login;
-document.getElementById("createBtn").onclick = createAccount;
-
-/* CREATE ACCOUNT */
-async function createAccount() {
-  const username = usernameInput.value.trim();
-  const password = passwordInput.value;
-
-  if (!username || !password) {
-    alert("Fill all fields");
-    return;
-  }
-
-  const email = `${username}@anomymouse.local`;
-
-  const { data, error } = await sb.auth.signUp({
-    email,
-    password
-  });
-
-  if (error) {
-    alert(error.message);
-    return;
-  }
-
-  await sb.from("profiles").insert({
-    id: data.user.id,
-    username,
-    avatar_url: null
-  });
-
-  alert("Account created. You can now login.");
+function showAuth() {
+  authView.style.display = "flex";
+  appView.style.display = "none";
 }
 
-/* LOGIN */
-async function login() {
-  const username = usernameInput.value.trim();
-  const password = passwordInput.value;
-
-  if (!username || !password) {
-    alert("Fill all fields");
-    return;
-  }
-
-  const email = `${username}@anomymouse.local`;
-
-  const { error } = await sb.auth.signInWithPassword({
-    email,
-    password
-  });
-
-  if (error) {
-    alert(error.message);
-    return;
-  }
-
-  loadApp();
+function showApp(username) {
+  displayName.textContent = username;
+  authView.style.display = "none";
+  appView.style.display = "block";
 }
 
-/* LOAD APP */
-async function loadApp() {
-  const { data:{ user } } = await sb.auth.getUser();
-  if (!user) return;
+/* ============================
+   AUTH STATE (CRITICAL FIX)
+============================ */
+supabase.auth.onAuthStateChange(async (_event, session) => {
+  if (!session) {
+    showAuth();
+    return;
+  }
 
-  const { data:profile } = await sb
+  const { data } = await supabase
     .from("profiles")
     .select("username")
-    .eq("id", user.id)
+    .eq("id", session.user.id)
     .single();
 
-  auth.style.display = "none";
-  app.style.display = "flex";
-  welcome.textContent = `Hello, ${profile.username}`;
-}
-
-/* AUTO LOGIN */
-sb.auth.getSession().then(({ data }) => {
-  if (data.session) loadApp();
+  showApp(data?.username || "Anonymous");
 });
+
+/* ============================
+   LOGIN
+============================ */
+document.getElementById("loginBtn").onclick = async () => {
+  const u = username.value.trim();
+  const p = password.value.trim();
+
+  if (!u || !p) return alert("Missing fields");
+
+  const { error } = await supabase.auth.signInWithPassword({
+    email: `${u}@anomymouse.local`,
+    password: p
+  });
+
+  if (error) alert(error.message);
+};
+
+/* ============================
+   CREATE ACCOUNT
+============================ */
+document.getElementById("createBtn").onclick = async () => {
+  const u = username.value.trim();
+  const p = password.value.trim();
+
+  if (!u || !p) return alert("Missing fields");
+
+  const { data, error } = await supabase.auth.signUp({
+    email: `${u}@anomymouse.local`,
+    password: p
+  });
+
+  if (error) return alert(error.message);
+
+  await supabase.from("profiles").insert({
+    id: data.user.id,
+    username: u
+  });
+
+  alert("Account created ✔");
+};
 </script>
 
 </body>
