@@ -16,14 +16,12 @@
       font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
       background: #f2f4f8;
     }
-
     .center {
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
     }
-
     .card {
       background: white;
       width: 100%;
@@ -53,21 +51,32 @@
       border-bottom: 1px solid #eee;
       cursor: pointer;
     }
+    .list-item:hover {
+      opacity: 0.7;
+    }
 
-    input,
     textarea {
+      width:100%;
+      height:180px;
+      resize:none;
+      border-radius:12px;
+      padding:10px;
+      border:1px solid #ccc;
+      margin-bottom:10px;
+    }
+
+    input {
       width:100%;
       padding:10px;
       border-radius:12px;
       border:1px solid #ccc;
       margin-bottom:10px;
-      font-size:16px; /* prevent mobile zoom */
     }
-
-    textarea {
-      height:180px;
-      resize:none;
-    }
+    /* Prevent iOS auto-zoom on input focus */
+input,
+textarea {
+  font-size: 16px;
+}
   </style>
 </head>
 
@@ -121,13 +130,6 @@ const supa = window.supabase.createClient(
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1kZndjcHp4YW5yYWV0ZW50bmNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA0OTk0NDIsImV4cCI6MjA4NjA3NTQ0Mn0.wjBSHwJssJOKlU1XmzoP0Sf21s5ZBRR9-2YdLwV7ISw"
 );
 
-/* ✅ DOM BINDINGS — THIS WAS THE FIX */
-const email = document.getElementById("email");
-const password = document.getElementById("password");
-const loginBtn = document.getElementById("loginBtn");
-const signupBtn = document.getElementById("signupBtn");
-const logoutBtn = document.getElementById("logoutBtn");
-
 const authView = document.getElementById("auth");
 const appView = document.getElementById("app");
 const homeView = document.getElementById("homeView");
@@ -161,6 +163,9 @@ function closeChat() {
   homeView.style.display = "block";
 }
 
+/* ===============================
+   LOAD PROFILE
+================================ */
 async function loadMyProfile(user) {
   const { data } = await supa
     .from("profiles")
@@ -170,6 +175,9 @@ async function loadMyProfile(user) {
   return data;
 }
 
+/* ===============================
+   FRIENDS
+================================ */
 async function loadFriends() {
   const { data: { user } } = await supa.auth.getUser();
   const { data } = await supa
@@ -198,6 +206,9 @@ async function loadFriends() {
   });
 }
 
+/* ===============================
+   AUTH STATE
+================================ */
 supa.auth.onAuthStateChange(async (_event, session) => {
   if (session?.user) {
     myProfile = await loadMyProfile(session.user);
@@ -210,15 +221,14 @@ supa.auth.onAuthStateChange(async (_event, session) => {
   }
 });
 
+/* ===============================
+   LOGIN / SIGNUP
+================================ */
 loginBtn.onclick = async () => {
-  const { error } = await supa.auth.signInWithPassword({
+  await supa.auth.signInWithPassword({
     email: email.value,
     password: password.value
   });
-
-  if (error) {
-    alert(error.message);
-  }
 };
 
 signupBtn.onclick = async () => {
@@ -241,4 +251,3 @@ logoutBtn.onclick = async () => {
 
 </body>
 </html>
-
