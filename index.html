@@ -1,174 +1,99 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>AnonyMouse</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AnonyMouse – Test</title>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Supabase SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<style>
-* { box-sizing: border-box; }
-html, body {
-  margin: 0;
-  height: 100%;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  background: #f2f4f8;
-}
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: system-ui, -apple-system;
+      background: #f2f4f8;
+    }
 
-.center {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+    .box {
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      width: 320px;
+      box-shadow: 0 10px 25px rgba(0,0,0,.15);
+      text-align: center;
+    }
 
-.card {
-  background: white;
-  width: 100%;
-  max-width: 360px;
-  padding: 24px;
-  border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(0,0,0,.1);
-  text-align: center;
-}
+    input, button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+      font-size: 16px;
+    }
 
-.logo svg {
-  width: 56px;
-  height: 56px;
-  margin-bottom: 12px;
-}
-
-input {
-  width: 100%;
-  padding: 12px;
-  margin-bottom: 10px;
-  border-radius: 10px;
-  border: 1px solid #ccc;
-}
-
-button {
-  width: 100%;
-  padding: 12px;
-  border-radius: 10px;
-  border: none;
-  font-size: 15px;
-  cursor: pointer;
-}
-
-.primary {
-  background: #1f6feb;
-  color: white;
-  margin-bottom: 8px;
-}
-
-.secondary {
-  background: #e5e7eb;
-}
-
-#app {
-  display: none;
-}
-</style>
+    button {
+      cursor: pointer;
+    }
+  </style>
 </head>
 
 <body>
 
-<!-- AUTH -->
-<div id="auth" class="center">
-  <div class="card">
-    <div class="logo">
-      <svg viewBox="0 0 64 64">
-        <circle cx="32" cy="34" r="16" fill="#1f6feb"/>
-        <circle cx="18" cy="20" r="8" fill="#1f6feb"/>
-        <circle cx="46" cy="20" r="8" fill="#1f6feb"/>
-        <circle cx="27" cy="32" r="2" fill="white"/>
-        <circle cx="37" cy="32" r="2" fill="white"/>
-      </svg>
-    </div>
+<div class="box">
+  <h2>AnonyMouse – Auth Test</h2>
 
-    <h2>Welcome to AnonyMouse</h2>
+  <input id="email" placeholder="Email" />
+  <input id="password" type="password" placeholder="Password" />
 
-    <input id="username" placeholder="Username" />
-    <input id="password" type="password" placeholder="Password" />
+  <button id="login">Login</button>
+  <button id="signup">Create Account</button>
 
-    <button id="loginBtn" class="primary">Login</button>
-    <button id="createBtn" class="secondary">Create Account</button>
-  </div>
-</div>
-
-<!-- APP -->
-<div id="app" class="center">
-  <div class="card">
-    <h2 id="welcome"></h2>
-    <button id="logoutBtn" class="primary">Logout</button>
-  </div>
+  <p id="status"></p>
 </div>
 
 <script>
-/* =====================
-   SUPABASE INIT
-===================== */
-const supabase = window.supabase.createClient(
-  "https://mdfwcpzxanraetentncb.supabase.co",
-  "sb_publishable_A9j8VGIbz-JikQzjbSm9vw_0qhrOLTk"
-);
+/* ============================
+   HARD BASELINE SCRIPT
+============================ */
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("JS LOADED ✅");
 
-/* =====================
-   DOM REFERENCES
-===================== */
-const authView = document.getElementById("auth");
-const appView = document.getElementById("app");
-const welcome = document.getElementById("welcome");
+  const status = document.getElementById("status");
 
-/* =====================
-   AUTH STATE
-===================== */
-supabase.auth.onAuthStateChange((_event, session) => {
-  if (!session) {
-    authView.style.display = "flex";
-    appView.style.display = "none";
-  } else {
-    authView.style.display = "none";
-    appView.style.display = "flex";
-    welcome.textContent = "Welcome, " + session.user.email.split("@")[0];
-  }
-});
+  const supabase = window.supabase.createClient(
+    "https://mdfwcpzxanraetentncb.supabase.co",
+    "sb_publishable_A9j8VGIbz-JikQzjbSm9vw_0qhrOLTk"
+  );
 
-/* =====================
-   EVENT HANDLERS
-===================== */
-document.getElementById("loginBtn").addEventListener("click", async () => {
-  alert("Login button works ✅");
+  document.getElementById("login").addEventListener("click", async () => {
+    alert("LOGIN CLICKED");
 
-  const u = username.value.trim();
-  const p = password.value;
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
 
-  const { error } = await supabase.auth.signInWithPassword({
-    email: `${u}@anomymouse.local`,
-    password: p
+    const { error } = await supabase.auth.signInWithPassword({
+      email, password
+    });
+
+    status.textContent = error ? error.message : "Logged in ✅";
   });
 
-  if (error) alert(error.message);
-});
+  document.getElementById("signup").addEventListener("click", async () => {
+    alert("SIGNUP CLICKED");
 
-document.getElementById("createBtn").addEventListener("click", async () => {
-  alert("Create button works ✅");
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
 
-  const u = username.value.trim();
-  const p = password.value;
+    const { error } = await supabase.auth.signUp({
+      email, password
+    });
 
-  const { error } = await supabase.auth.signUp({
-    email: `${u}@anomymouse.local`,
-    password: p
+    status.textContent = error ? error.message : "Account created ✅";
   });
-
-  if (error) alert(error.message);
-  else alert("Account created");
-});
-
-document.getElementById("logoutBtn").addEventListener("click", async () => {
-  await supabase.auth.signOut();
 });
 </script>
 
