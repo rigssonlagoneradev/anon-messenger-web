@@ -3,243 +3,223 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Anonymous Messenger</title>
-
-<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<title>AnonyMouse</title>
 
 <style>
 :root{
   --blue:#1877f2;
-  --bg:#f0f2f5;
-  --safe-top:env(safe-area-inset-top);
-  --safe-bottom:env(safe-area-inset-bottom);
+  --bg:#f4f6fb;
+  --card:#ffffff;
+  --border:#e4e6eb;
 }
+
 *{box-sizing:border-box;font-family:system-ui}
 html,body{margin:0;height:100%;background:var(--bg)}
-button,input,textarea{touch-action:manipulation;font-size:16px}
 
-.view{height:100dvh;display:flex;flex-direction:column;background:#fff}
-.header{
-  background:var(--blue);color:#fff;
-  padding:14px;padding-top:calc(14px + var(--safe-top));
-  display:flex;justify-content:space-between;align-items:center
+.hidden{display:none}
+
+/* ===== HOME ===== */
+.home{
+  min-height:100dvh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
 }
-.users,.messages{flex:1;overflow-y:auto}
-.inputBar{
-  padding:10px;padding-bottom:calc(10px + var(--safe-bottom));
-  border-top:1px solid #ddd
+
+.card{
+  background:var(--card);
+  width:90%;
+  max-width:360px;
+  border-radius:16px;
+  padding:24px;
+  text-align:center;
+  box-shadow:0 10px 30px rgba(0,0,0,.08);
 }
-textarea{width:100%;padding:12px;border-radius:20px;border:1px solid #ccc}
 
-.user{padding:12px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center}
-.left{display:flex;align-items:center;gap:10px}
+.logo{
+  width:64px;height:64px;
+  margin:0 auto 10px;
+  border-radius:50%;
+  background:var(--blue);
+  position:relative;
+}
+.logo::before{
+  content:"";
+  position:absolute;
+  width:30px;height:30px;
+  background:#fff;
+  border-radius:50%;
+  top:14px;left:17px;
+}
+.logo::after{
+  content:"";
+  position:absolute;
+  width:10px;height:20px;
+  border:3px solid #fff;
+  border-left:none;
+  border-radius:0 20px 20px 0;
+  right:-6px;top:20px;
+}
 
-.avatar{width:40px;height:40px;border-radius:50%;background:#ccc;background-size:cover;background-position:center}
-.status{width:10px;height:10px;border-radius:50%;margin-left:-12px;border:2px solid #fff}
-.online{background:#2ecc71}
-.offline{background:#aaa}
+.card h1{margin:6px 0 14px}
+.avatar{
+  width:96px;height:96px;
+  border-radius:50%;
+  background:#ccc;
+  background-size:cover;
+  background-position:center;
+  margin:0 auto 10px;
+}
+.card button{
+  width:100%;
+  padding:12px;
+  border:none;
+  border-radius:10px;
+  background:var(--blue);
+  color:#fff;
+  font-size:16px;
+}
 
-.msg{max-width:75%;margin:6px;padding:10px 14px;border-radius:18px}
+/* ===== APP LAYOUT ===== */
+.app{
+  height:100dvh;
+  display:flex;
+}
+
+/* LEFT PANEL */
+.sidebar{
+  width:300px;
+  background:#fff;
+  border-right:1px solid var(--border);
+  display:flex;
+  flex-direction:column;
+}
+
+.sidebar h2{
+  padding:16px;
+  margin:0;
+  border-bottom:1px solid var(--border);
+}
+
+.friend{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:12px 16px;
+  cursor:pointer;
+}
+.friend:hover{background:#f0f2f5}
+.friend .avatar{width:42px;height:42px;margin:0}
+.friend span{font-weight:500}
+
+/* RIGHT PANEL */
+.chat{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+}
+
+.chatHeader{
+  padding:16px;
+  border-bottom:1px solid var(--border);
+  font-weight:600;
+}
+
+.messages{
+  flex:1;
+  padding:16px;
+  overflow-y:auto;
+}
+
+.msg{
+  max-width:70%;
+  margin-bottom:8px;
+  padding:10px 14px;
+  border-radius:18px;
+}
 .me{background:var(--blue);color:#fff;margin-left:auto}
 .them{background:#e4e6eb}
 
-.hidden{display:none}
-.center{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100dvh;padding:20px}
-input{padding:12px;width:100%;margin-bottom:10px}
+.inputBar{
+  border-top:1px solid var(--border);
+  padding:12px;
+}
+textarea{
+  width:100%;
+  resize:none;
+  padding:12px;
+  border-radius:18px;
+  border:1px solid #ccc;
+}
+
+/* ===== MOBILE ===== */
+@media (max-width:768px){
+  .sidebar{width:100%}
+  .chat{display:none}
+  .chat.active{display:flex}
+}
 </style>
 </head>
 
 <body>
 
-<!-- AUTH -->
-<div id="authView" class="center">
-  <h2>Welcome Anonymous User</h2>
-  <input id="usernameInput" placeholder="Username">
-  <input id="passwordInput" type="password" placeholder="Password">
-  <button id="loginBtn">Login</button>
-  <button id="signupBtn">Create Account</button>
-  <p style="font-size:13px;color:#555">
-    ⚠️ No recovery. If you forget your username or password, this account is permanently lost.
-  </p>
-</div>
-
-<!-- ONLINE -->
-<div id="onlineView" class="view hidden">
-  <div class="header">
-    <span>Online</span>
-    <button id="profileBtn">👤</button>
-  </div>
-  <div class="users" id="onlineUsers"></div>
-</div>
-
-<!-- CHAT -->
-<div id="chatView" class="view hidden">
-  <div class="header">
-    <button id="backBtn">⬅</button>
-    <span id="chatTitle"></span>
-  </div>
-  <div class="messages" id="messages"></div>
-  <div class="inputBar">
-    <textarea id="msgInput" rows="1" placeholder="Type a message"></textarea>
+<!-- HOME -->
+<div id="home" class="home">
+  <div class="card">
+    <div class="logo"></div>
+    <h1>AnonyMouse</h1>
+    <div id="homeAvatar" class="avatar"></div>
+    <p id="homeUsername">Anonymous</p>
+    <button>Add Friend</button>
   </div>
 </div>
 
-<!-- PROFILE -->
-<div id="profileView" class="view hidden">
-  <div class="header">
-    <button id="profileBack">⬅</button>
-    <span>Your Profile</span>
+<!-- APP -->
+<div id="app" class="app hidden">
+
+  <!-- FRIENDS -->
+  <div class="sidebar">
+    <h2>Friends</h2>
+    <div class="friend" onclick="openChat('Alice')">
+      <div class="avatar"></div>
+      <span>Alice</span>
+    </div>
+    <div class="friend" onclick="openChat('Bob')">
+      <div class="avatar"></div>
+      <span>Bob</span>
+    </div>
   </div>
-  <input id="nameInput" placeholder="Username">
-  <input type="file" id="avatarInput" accept="image/*">
-  <button id="saveProfile">Save</button>
+
+  <!-- CHAT -->
+  <div id="chat" class="chat">
+    <div class="chatHeader" id="chatTitle">Chat</div>
+    <div class="messages" id="messages">
+      <div class="msg them">Hey there 👋</div>
+      <div class="msg me">Hello!</div>
+    </div>
+    <div class="inputBar">
+      <textarea rows="1" placeholder="Type a message"></textarea>
+    </div>
+  </div>
+
 </div>
 
 <script>
-/* ===== Supabase ===== */
-const supabase = supabase.createClient(
-  "https://mdfwcpzxanraetentncb.supabase.co",
-  "sb_publishable_A9j8VGIbz-JikQzjbSm9vw_0qhrOLTk"
-);
-
-let session=null, profile=null, ws=null;
-let onlineUsersMap=new Map(), activeChat=null, chatMemory={};
-
-/* ===== DOM ===== */
-const authView=document.getElementById("authView");
-const onlineView=document.getElementById("onlineView");
-const chatView=document.getElementById("chatView");
-const profileView=document.getElementById("profileView");
-const onlineUsers=document.getElementById("onlineUsers");
-const messages=document.getElementById("messages");
-const chatTitle=document.getElementById("chatTitle");
-const msgInput=document.getElementById("msgInput");
-
-/* ===== AUTH ===== */
-document.getElementById("signupBtn").onclick=async()=>{
-  const u=usernameInput.value,p=passwordInput.value;
-  const { error }=await supabase.auth.signUp({email:u+"@anon.local",password:p});
-  if(error) alert(error.message);
-  else alert("Account created. Login now.");
-};
-
-document.getElementById("loginBtn").onclick=async()=>{
-  const u=usernameInput.value,p=passwordInput.value;
-  const { data, error }=await supabase.auth.signInWithPassword({email:u+"@anon.local",password:p});
-  if(error) return alert("Invalid login");
-  session=data.session;
-  await loadProfile();
-  connectWS();
-  authView.classList.add("hidden");
-  onlineView.classList.remove("hidden");
-};
-
-async function loadProfile(){
-  const { data }=await supabase.from("profiles").select("*").eq("id",session.user.id).single();
-  if(!data){
-    await supabase.from("profiles").insert({id:session.user.id,username:usernameInput.value});
-    profile={username:usernameInput.value};
-  }else profile=data;
-}
-
-/* ===== WS ===== */
-function connectWS(){
-  ws=new WebSocket("wss://anon-messenger-server-production.up.railway.app");
-  ws.onopen=()=>ws.send(JSON.stringify({type:"hello",id:session.user.id,profile}));
-  ws.onmessage=e=>{
-    const d=JSON.parse(e.data);
-    if(d.type==="online"){
-      onlineUsersMap=new Map(d.users.map(u=>[u.id,u]));
-      renderOnline();
-    }
-    if(d.type==="relay"){
-      chatMemory[d.from]=chatMemory[d.from]||[];
-      chatMemory[d.from].push({text:d.payload.text,who:"them"});
-      if(activeChat===d.from)addMessage(d.payload.text,"them");
-    }
-  };
-}
-
-/* ===== UI ===== */
-function renderOnline(){
-  onlineUsers.innerHTML="";
-  onlineUsersMap.forEach((u,id)=>{
-    if(id===session.user.id)return;
-    const div=document.createElement("div");
-    div.className="user";
-    const left=document.createElement("div");left.className="left";
-    const av=document.createElement("div");av.className="avatar";
-    if(u.profile?.avatar_url)av.style.backgroundImage=`url(${u.profile.avatar_url})`;
-    const st=document.createElement("div");st.className="status online";
-    const name=document.createElement("span");name.textContent=u.profile?.username||"Anonymous";
-    left.append(av,st,name);
-    const btn=document.createElement("button");
-    btn.textContent="Chat";
-    btn.onclick=()=>openChat(id,u.profile?.username||"Anonymous");
-    div.append(left,btn);
-    onlineUsers.append(div);
-  });
-}
-
-function openChat(id,name){
-  activeChat=id;
-  chatTitle.textContent=name;
-  messages.innerHTML="";
-  (chatMemory[id]||[]).forEach(m=>addMessage(m.text,m.who));
-  onlineView.classList.add("hidden");
-  chatView.classList.remove("hidden");
-}
-
-document.getElementById("backBtn").onclick=()=>{
-  chatView.classList.add("hidden");
-  onlineView.classList.remove("hidden");
-  activeChat=null;
-};
-
-msgInput.addEventListener("keydown",e=>{
-  if(e.key==="Enter"&&!e.shiftKey){
-    e.preventDefault();
-    ws.send(JSON.stringify({type:"relay",to:activeChat,from:session.user.id,payload:{text:msgInput.value}}));
-    chatMemory[activeChat]=chatMemory[activeChat]||[];
-    chatMemory[activeChat].push({text:msgInput.value,who:"me"});
-    addMessage(msgInput.value,"me");
-    msgInput.value="";
+/* ===== DEMO NAV (no logic removed) ===== */
+function openChat(name){
+  document.getElementById("chatTitle").textContent=name;
+  document.getElementById("chat").classList.add("active");
+  if(window.innerWidth<768){
+    document.querySelector(".sidebar").classList.add("hidden");
   }
-});
-
-function addMessage(t,w){
-  const d=document.createElement("div");
-  d.className="msg "+w;
-  d.textContent=t;
-  messages.appendChild(d);
-  messages.scrollTop=messages.scrollHeight;
 }
 
-/* ===== PROFILE ===== */
-document.getElementById("profileBtn").onclick=()=>{
-  onlineView.classList.add("hidden");
-  profileView.classList.remove("hidden");
-  nameInput.value=profile.username;
-};
-
-document.getElementById("profileBack").onclick=()=>{
-  profileView.classList.add("hidden");
-  onlineView.classList.remove("hidden");
-};
-
-avatarInput.onchange=e=>{
-  const r=new FileReader();
-  r.onload=()=>profile.avatar_url=r.result;
-  r.readAsDataURL(e.target.files[0]);
-};
-
-document.getElementById("saveProfile").onclick=async()=>{
-  profile.username=nameInput.value;
-  await supabase.from("profiles").update(profile).eq("id",session.user.id);
-  ws.send(JSON.stringify({type:"profile_update",from:session.user.id,profile}));
-  profileView.classList.add("hidden");
-  onlineView.classList.remove("hidden");
-};
+/* simulate logged in */
+setTimeout(()=>{
+  home.classList.add("hidden");
+  app.classList.remove("hidden");
+},500);
 </script>
+
 </body>
 </html>
