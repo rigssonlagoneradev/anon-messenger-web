@@ -88,12 +88,20 @@
 
 <!-- APP VIEW -->
 <div id="app" class="center">
-  <div class="card">
-    <h1>You're in 🐭</h1>
-    <p id="welcomeText"></p>
-    <button class="primary" id="logoutBtn">Logout</button>
+  <div class="card" style="width:100%; max-width:420px;">
+    <h1 id="welcomeText"></h1>
+    <p style="font-size:13px; color:#666; margin-bottom:12px;">
+      Online users
+    </p>
+
+    <div id="onlineUsers" style="text-align:left;"></div>
+
+    <button class="primary" id="logoutBtn" style="margin-top:16px;">
+      Logout
+    </button>
   </div>
 </div>
+
 
 <script>
   // ===============================
@@ -117,13 +125,20 @@
   authView.style.display = "none";
   appView.style.display = "flex";
 
-  const profile = await loadMyProfile(user);
-
-  if (!profile) return;
+  myProfile = await loadMyProfile(user);
+  if (!myProfile) return;
 
   document.getElementById("welcomeText").textContent =
-    `Welcome, ${profile.username}`;
+    `Welcome, ${myProfile.username}`;
+
+  // Start presence
+  await heartbeat();
+  loadOnlineUsers();
+
+  setInterval(heartbeat, 30_000);      // every 30s
+  setInterval(loadOnlineUsers, 10_000); // every 10s
   }
+
 
   async function loadMyProfile(user) {
   const { data, error } = await supa
@@ -139,7 +154,55 @@
   }
 
   return data;
+  }
+  let myProfile = null;
+
+// Mark yourself online
+async function heartbeat() {
+  if (!myProfile) return;
+
+  await supa
+    .from("profiles")
+    .update({ last_seen: new Date().toISOString() })
+    .eq("id", myProfile.id);
 }
+
+// Fetch online users
+async function loadOnlineUsers() {
+  const oneMinuteAgo = new Date(Date.now() - 60 * 1000).toISOString();
+
+  const { data, error } = await supa
+    .from("profiles")
+    .select("id, username")
+    .gte("last_seen", oneMinuteAgo);
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  renderOnlineUsers(data);
+}
+
+function renderOnlineUsers(users) {
+  const container = document.getElementById("onlineUsers");
+  container.innerHTML = "";
+
+  users
+    .filter(u => u.id !== myProfile.id)
+    .forEach(user => {
+      const div = document.createElement("div");
+      div.style.padding = "8px 0";
+      div.style.borderBottom = "1px solid #eee";
+      div.textContent = "🟢 " + user.username;
+      container.appendChild(div);
+    });
+
+  if (container.innerHTML === "") {
+    container.innerHTML = "<p style='color:#888'>No one online</p>";
+  }
+}
+
 
 
   // ===============================
@@ -224,5 +287,6 @@
 
 </body>
 </html>
+
 
 
