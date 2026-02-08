@@ -64,6 +64,7 @@
 
 <body>
 
+<!-- AUTH VIEW -->
 <div id="auth" class="center">
   <div class="card">
     <h1>Welcome to AnonyMouse</h1>
@@ -74,8 +75,10 @@
   </div>
 </div>
 
+<!-- APP VIEW -->
 <div id="app" class="center">
   <div class="card">
+
     <div id="homeView">
       <h1 id="welcomeText"></h1>
 
@@ -97,17 +100,22 @@
       <input placeholder="Type message (P2P next step)" />
       <button class="btn-primary btn-full">Send</button>
     </div>
+
   </div>
 </div>
 
 <script>
-  console.log("SCRIPT LOADED");
-
+/* ===============================
+   SUPABASE INIT
+================================ */
 const supa = window.supabase.createClient(
   "https://mdfwcpzxanraetentncb.supabase.co",
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1kZndjcHp4YW5yYWV0ZW50bmNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA0OTk0NDIsImV4cCI6MjA4NjA3NTQ0Mn0.wjBSHwJssJOKlU1XmzoP0Sf21s5ZBRR9-2YdLwV7ISw"
 );
 
+/* ===============================
+   DOM
+================================ */
 const authView = document.getElementById("auth");
 const appView = document.getElementById("app");
 const homeView = document.getElementById("homeView");
@@ -122,6 +130,9 @@ const backBtn = document.getElementById("backBtn");
 
 let myProfile = null;
 
+/* ===============================
+   VIEW HELPERS
+================================ */
 function showAuth() {
   authView.style.display = "flex";
   appView.style.display = "none";
@@ -132,21 +143,16 @@ function showHome() {
   chatView.style.display = "none";
 }
 
-async function showApp(user) {
-  myProfile = await loadMyProfile(user);
-  if (!myProfile) return;
-
-  document.getElementById("welcomeText").textContent =
-    "Welcome, " + myProfile.username;
-
-  authView.style.display = "none";
-  appView.style.display = "flex";
-
-  showHome();
-  loadFriends();
-  loadOnlineUsers();
+function openChat(friend) {
+  document.getElementById("chatTitle").textContent =
+    "Chat with " + friend.username;
+  homeView.style.display = "none";
+  chatView.style.display = "block";
 }
 
+/* ===============================
+   PROFILE
+================================ */
 async function loadMyProfile(user) {
   const { data, error } = await supa
     .from("profiles")
@@ -154,49 +160,99 @@ async function loadMyProfile(user) {
     .eq("id", user.id)
     .single();
 
-  if (error) {
-    alert("Profile missing. Please contact support.");
-    return null;
-  }
+  if (error) return null;
   return data;
 }
 
-/* AUTH STATE */
+/* ===============================
+   DATA LOADERS
+================================ */
+async function loadFriends() {
+  const { data: { user } } = await supa.auth.getUser();
+  if (!user) return;
+
+  const { data } = await supa
+    .from("friends")
+    .select(`
+      user_id,
+      friend_id,
+      user_profile:profiles!friends_user_id_fkey ( username ),
+      friend_profile:profiles!friends_friend_id_fkey ( username )
+    `)
+    .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`);
+
+  friendsList.innerHTML = "";
+
+  data.forEach(row => {
+    const friend = row.user_id === user.id
+      ? row.friend_profile
+      : row.user_profile;
+
+    if (!friend) return;
+
+    const div = document.createElement("div");
+    div.className = "list-item";
+    div.textContent = friend.username;
+    div.onclick = () => openChat(friend);
+
+    friendsList.appendChild(div);
+  });
+}
+
+async function loadOnlineUsers() {
+  const { data } = await supa
+    .from("profiles")
+    .select("id, username");
+
+  onlineUsers.innerHTML = "";
+
+  data
+    .filter(u => u.id !== myProfile.id)
+    .forEach(u => {
+      const div = document.createElement("div");
+      div.className = "list-item";
+      div.textContent = "🟢 " + u.username;
+      onlineUsers.appendChild(div);
+    });
+}
+
+/* ===============================
+   AUTH STATE (SINGLE SOURCE OF TRUTH)
+================================ */
 supa.auth.onAuthStateChange(async (_, session) => {
   if (session?.user) {
-    await showApp(session.user);
+    myProfile = await loadMyProfile(session.user);
+    if (!myProfile) return;
+
+    welcomeText.textContent = "Welcome, " + myProfile.username;
+    authView.style.display = "none";
+    appView.style.display = "flex";
+
+    showHome();
+    loadFriends();
+    loadOnlineUsers();
   } else {
     showAuth();
   }
 });
 
-/* LOGIN */
-  console.log("BINDING LOGIN BUTTON", loginBtn);
-
+/* ===============================
+   AUTH ACTIONS
+================================ */
 loginBtn.onclick = async () => {
-  alert("LOGIN CLICKED");
   if (!email.value || !password.value) {
     alert("Enter email and password");
     return;
   }
 
-  const { data, error } = await supa.auth.signInWithPassword({
+  const { error } = await supa.auth.signInWithPassword({
     email: email.value,
     password: password.value
   });
 
-  if (error) {
-    alert(error.message);
-    return;
-  }
-
-  // 👇 This line is ONLY for debugging
-  console.log("Login success:", data.user);
+  if (error) alert(error.message);
 };
 
-
-
-/* SIGNUP */
 signupBtn.onclick = async () => {
   if (!email.value || !password.value) {
     alert("Enter email and password");
@@ -223,7 +279,6 @@ signupBtn.onclick = async () => {
   }
 };
 
-
 logoutBtn.onclick = async () => {
   await supa.auth.signOut();
 };
@@ -233,8 +288,3 @@ backBtn.onclick = showHome;
 
 </body>
 </html>
-
-
-
-
-
