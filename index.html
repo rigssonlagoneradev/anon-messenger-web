@@ -5,26 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AnonyMouse</title>
 
-  <!-- Supabase v2 CDN (ONLY ONCE) -->
+  <!-- Supabase v2 CDN (LOAD ONCE) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
     * { box-sizing: border-box; }
-
     html, body {
       margin: 0;
       height: 100%;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
       background: #f2f4f8;
     }
-
     .center {
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
     }
-
     .card {
       background: white;
       width: 100%;
@@ -34,27 +31,9 @@
       box-shadow: 0 10px 30px rgba(0,0,0,.1);
       text-align: center;
     }
-
-    .logo {
-      margin-bottom: 12px;
-    }
-
-    .logo svg {
-      width: 64px;
-      height: 64px;
-    }
-
-    h1 {
-      margin: 8px 0 4px;
-      font-size: 22px;
-    }
-
-    .sub {
-      font-size: 13px;
-      color: #666;
-      margin-bottom: 20px;
-    }
-
+    .logo svg { width: 64px; height: 64px; }
+    h1 { margin: 12px 0 6px; }
+    .sub { font-size: 13px; color: #666; margin-bottom: 20px; }
     input {
       width: 100%;
       padding: 12px;
@@ -63,7 +42,6 @@
       border: 1px solid #ccc;
       font-size: 15px;
     }
-
     button {
       width: 100%;
       padding: 12px;
@@ -72,29 +50,10 @@
       font-size: 15px;
       cursor: pointer;
     }
-
-    .primary {
-      background: #1f6feb;
-      color: white;
-      margin-bottom: 8px;
-    }
-
-    .secondary {
-      background: #e5e7eb;
-    }
-
-    .note {
-      font-size: 12px;
-      color: #777;
-      margin-top: 12px;
-    }
-
-    #app {
-      display: none;
-      height: 100vh;
-      background: white;
-      padding: 16px;
-    }
+    .primary { background: #1f6feb; color: white; margin-bottom: 8px; }
+    .secondary { background: #e5e7eb; }
+    .note { font-size: 12px; color: #777; margin-top: 12px; }
+    #app { display: none; }
   </style>
 </head>
 
@@ -103,10 +62,9 @@
 <!-- AUTH VIEW -->
 <div id="auth" class="center">
   <div class="card">
-
     <div class="logo">
       <!-- Mouse Logo -->
-      <svg viewBox="0 0 64 64" fill="none">
+      <svg viewBox="0 0 64 64">
         <circle cx="32" cy="36" r="16" fill="#1f6feb"/>
         <circle cx="18" cy="22" r="8" fill="#1f6feb"/>
         <circle cx="46" cy="22" r="8" fill="#1f6feb"/>
@@ -138,12 +96,12 @@
 </div>
 
 <script>
-  const SUPABASE_URL = "https://mdfwcpzxanraetentncb.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1kZndjcHp4YW5yYWV0ZW50bmNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA0OTk0NDIsImV4cCI6MjA4NjA3NTQ0Mn0.wjBSHwJssJOKlU1XmzoP0Sf21s5ZBRR9-2YdLwV7ISw";
-
-  const supabase = window.supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_ANON_KEY
+  // ===============================
+  // SUPABASE INIT (SINGLE INSTANCE)
+  // ===============================
+  const supa = window.supabase.createClient(
+    "https://mdfwcpzxanraetentncb.supabase.co",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1kZndjcHp4YW5yYWV0ZW50bmNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA0OTk0NDIsImV4cCI6MjA4NjA3NTQ0Mn0.wjBSHwJssJOKlU1XmzoP0Sf21s5ZBRR9-2YdLwV7ISw"
   );
 
   const authView = document.getElementById("auth");
@@ -161,80 +119,55 @@
     welcomeText.textContent = `Logged in as ${user.email}`;
   }
 
-  // 🔑 SINGLE SOURCE OF TRUTH
-  supabase.auth.onAuthStateChange((_event, session) => {
-    console.log("AUTH STATE:", _event, session);
-    if (session?.user) {
-      showApp(session.user);
-    } else {
-      showAuth();
-    }
+  // ===============================
+  // AUTH STATE LISTENER (NO FLICKER)
+  // ===============================
+  supa.auth.onAuthStateChange((event, session) => {
+    console.log("AUTH EVENT:", event);
+    session?.user ? showApp(session.user) : showAuth();
   });
 
+  // ===============================
   // LOGIN
+  // ===============================
   document.getElementById("loginBtn").onclick = async () => {
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value;
 
-    if (!email || !password) {
-      alert("Enter email and password");
-      return;
-    }
+    if (!email || !password) return alert("Enter email and password");
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
-
-    if (error) {
-      alert(error.message);
-    }
+    const { error } = await supa.auth.signInWithPassword({ email, password });
+    if (error) alert(error.message);
   };
 
-  // SIGNUP
+  // ===============================
+  // SIGNUP + PROFILE INSERT
+  // ===============================
   document.getElementById("signupBtn").onclick = async () => {
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value;
 
-    if (!email || !password) {
-      alert("Enter email and password");
-      return;
-    }
+    if (!email || !password) return alert("Enter email and password");
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password
-    });
+    const { data, error } = await supa.auth.signUp({ email, password });
+    if (error) return alert(error.message);
 
-    if (error) {
-      alert(error.message);
-      return;
-    }
-
-    if (!data.user) {
-      alert("Check email to confirm account.");
-      return;
-    }
-
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .insert({
+    if (data.user) {
+      await supa.from("profiles").insert({
         id: data.user.id,
         username: email.split("@")[0],
         avatar_url: null
       });
-
-    if (profileError) {
-      alert(profileError.message);
     }
   };
 
+  // ===============================
   // LOGOUT
+  // ===============================
   document.getElementById("logoutBtn").onclick = async () => {
-    await supabase.auth.signOut();
+    await supa.auth.signOut();
   };
 </script>
 
 </body>
 </html>
-
