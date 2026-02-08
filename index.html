@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AnonyMouse</title>
 
-  <!-- Supabase v2 CDN (LOAD ONCE) -->
+  <!-- Supabase v2 CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
@@ -16,12 +16,14 @@
       font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
       background: #f2f4f8;
     }
+
     .center {
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
     }
+
     .card {
       background: white;
       width: 100%;
@@ -29,219 +31,220 @@
       padding: 24px;
       border-radius: 16px;
       box-shadow: 0 10px 30px rgba(0,0,0,.1);
-    }
-
-    button {
-      border: none;
-      border-radius: 12px;
-      padding: 12px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    .btn-primary { background:#2563eb; color:white; }
-    .btn-secondary { background:#e5e7eb; }
-    .btn-small { padding:6px 10px; font-size:12px; }
-    .btn-full { width:100%; }
-
-    #app { display:none; }
-    #chatView { display:none; }
-
-    .list-item {
-      padding: 10px 0;
-      border-bottom: 1px solid #eee;
-      cursor: pointer;
-    }
-    .list-item:hover {
-      opacity: 0.7;
-    }
-
-    textarea {
-      width:100%;
-      height:180px;
-      resize:none;
-      border-radius:12px;
-      padding:10px;
-      border:1px solid #ccc;
-      margin-bottom:10px;
+      text-align: center;
     }
 
     input {
-      width:100%;
-      padding:10px;
-      border-radius:12px;
-      border:1px solid #ccc;
-      margin-bottom:10px;
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 10px;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      font-size: 15px;
     }
+
+    button {
+      appearance: none;
+      border: none;
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      background: #e5e7eb;
+    }
+
+    .btn-primary { background: #2563eb; color: white; }
+    .btn-secondary { background: #f1f5f9; }
+    .btn-danger { background: #fee2e2; color: #b91c1c; }
+    .btn-ghost { background: transparent; color: #2563eb; }
+    .btn-small { padding: 6px 10px; font-size: 12px; }
+    .btn-full { width: 100%; }
+
+    #app { display: none; }
   </style>
 </head>
 
 <body>
 
-<!-- AUTH -->
+<!-- AUTH VIEW -->
 <div id="auth" class="center">
   <div class="card">
-    <h2>Welcome to AnonyMouse</h2>
-    <input id="email" type="email" placeholder="Email" />
+    <h1>Welcome to AnonyMouse</h1>
+    <input id="email" placeholder="Email" />
     <input id="password" type="password" placeholder="Password" />
-    <button id="loginBtn" class="btn-primary btn-full">Login</button>
-    <button id="signupBtn" class="btn-secondary btn-full">Create Account</button>
+    <button class="btn-primary btn-full" id="loginBtn">Login</button>
+    <button class="btn-secondary btn-full" id="signupBtn">Create Account</button>
   </div>
 </div>
 
-<!-- APP -->
+<!-- APP VIEW -->
 <div id="app" class="center">
+  <div class="card" style="max-width:320px">
 
-  <!-- HOME VIEW -->
-  <div id="homeView" class="card">
-    <h2 id="welcomeText"></h2>
+    <!-- HOME VIEW -->
+    <div id="homeView">
+      <h2 id="welcomeText"></h2>
 
-    <h4>👥 Friends</h4>
-    <div id="friendsList"></div>
+      <h4>🔔 Friend Requests</h4>
+      <div id="friendRequests"></div>
 
-    <h4>🟢 Online Users</h4>
-    <div id="onlineUsers"></div>
+      <h4>👥 Your Friends</h4>
+      <div id="friendsList"></div>
 
-    <button id="logoutBtn" class="btn-primary btn-full">Logout</button>
+      <h4>🟢 Online Users</h4>
+      <div id="onlineUsers"></div>
+    </div>
+
+    <!-- CHAT VIEW -->
+    <div id="chatView" style="display:none">
+      <button class="btn-ghost btn-small" id="backBtn">← Back</button>
+      <h3 id="chatTitle"></h3>
+
+      <div id="chatMessages"
+        style="height:220px; overflow:auto; border:1px solid #eee; border-radius:10px; padding:8px; margin:10px 0;">
+      </div>
+
+      <input id="chatInput" placeholder="Type a message…" />
+      <button class="btn-primary btn-full" id="sendBtn">Send</button>
+    </div>
+
+    <button class="btn-primary btn-full" id="logoutBtn">Logout</button>
   </div>
-
-  <!-- CHAT VIEW -->
-  <div id="chatView" class="card">
-    <button class="btn-secondary btn-small" onclick="closeChat()">← Back</button>
-    <h3 id="chatTitle"></h3>
-
-    <textarea disabled placeholder="Messages will appear here"></textarea>
-    <input placeholder="Type message (P2P next step)" />
-    <button class="btn-primary btn-full">Send</button>
-  </div>
-
 </div>
 
 <script>
-/* ===============================
-   SUPABASE INIT (UNCHANGED)
-================================ */
-const supa = window.supabase.createClient(
-  "https://mdfwcpzxanraetentncb.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1kZndjcHp4YW5yYWV0ZW50bmNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA0OTk0NDIsImV4cCI6MjA4NjA3NTQ0Mn0.wjBSHwJssJOKlU1XmzoP0Sf21s5ZBRR9-2YdLwV7ISw"
-);
+  const supa = supabase.createClient(
+    "https://mdfwcpzxanraetentncb.supabase.co",
+    "YOUR_ANON_KEY"
+  );
 
-const authView = document.getElementById("auth");
-const appView = document.getElementById("app");
-const homeView = document.getElementById("homeView");
-const chatView = document.getElementById("chatView");
+  let myProfile = null;
+  let currentChatFriend = null;
 
-let myProfile = null;
-let currentChatUser = null;
+  const authView = document.getElementById("auth");
+  const appView = document.getElementById("app");
 
-function showAuth() {
-  authView.style.display = "flex";
-  appView.style.display = "none";
-}
+  function showAuth() {
+    authView.style.display = "flex";
+    appView.style.display = "none";
+  }
 
-function showApp() {
-  authView.style.display = "none";
-  appView.style.display = "flex";
-  homeView.style.display = "block";
-  chatView.style.display = "none";
-}
+  function showApp(user) {
+    authView.style.display = "none";
+    appView.style.display = "flex";
+    loadMyProfile(user);
+  }
 
-function openChat(username) {
-  currentChatUser = username;
-  document.getElementById("chatTitle").textContent = "Chat with " + username;
-  homeView.style.display = "none";
-  chatView.style.display = "block";
-}
+  function showHome() {
+    document.getElementById("homeView").style.display = "block";
+    document.getElementById("chatView").style.display = "none";
+    currentChatFriend = null;
+  }
 
-function closeChat() {
-  currentChatUser = null;
-  chatView.style.display = "none";
-  homeView.style.display = "block";
-}
+  function openChat(friend) {
+    currentChatFriend = friend;
+    document.getElementById("chatTitle").textContent =
+      "Chat with " + friend.username;
+    document.getElementById("chatMessages").innerHTML = "";
+    document.getElementById("homeView").style.display = "none";
+    document.getElementById("chatView").style.display = "block";
+  }
 
-/* ===============================
-   LOAD PROFILE
-================================ */
-async function loadMyProfile(user) {
-  const { data } = await supa
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
-  return data;
-}
+  async function loadMyProfile(user) {
+    const { data } = await supa
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single();
 
-/* ===============================
-   FRIENDS
-================================ */
-async function loadFriends() {
-  const { data: { user } } = await supa.auth.getUser();
-  const { data } = await supa
-    .from("friends")
-    .select(`
-      user_id,
-      friend_id,
-      user_profile:profiles!friends_user_id_fkey ( username ),
-      friend_profile:profiles!friends_friend_id_fkey ( username )
-    `)
-    .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`);
-
-  const list = document.getElementById("friendsList");
-  list.innerHTML = "";
-
-  data.forEach(row => {
-    const isMe = row.user_id === user.id;
-    const friend = isMe ? row.friend_profile : row.user_profile;
-    if (!friend) return;
-
-    const div = document.createElement("div");
-    div.className = "list-item";
-    div.textContent = friend.username;
-    div.onclick = () => openChat(friend.username);
-    list.appendChild(div);
-  });
-}
-
-/* ===============================
-   AUTH STATE
-================================ */
-supa.auth.onAuthStateChange(async (_event, session) => {
-  if (session?.user) {
-    myProfile = await loadMyProfile(session.user);
+    myProfile = data;
     document.getElementById("welcomeText").textContent =
       "Welcome, " + myProfile.username;
-    showApp();
+
     loadFriends();
-  } else {
-    showAuth();
+    loadOnlineUsers();
+    loadFriendRequests();
   }
-});
 
-/* ===============================
-   LOGIN / SIGNUP
-================================ */
-loginBtn.onclick = async () => {
-  await supa.auth.signInWithPassword({
-    email: email.value,
-    password: password.value
-  });
-};
+  async function loadFriends() {
+    const { data } = await supa
+      .from("friends")
+      .select(`
+        user_id,
+        friend_id,
+        user_profile:profiles!friends_user_id_fkey(username),
+        friend_profile:profiles!friends_friend_id_fkey(username)
+      `)
+      .or(`user_id.eq.${myProfile.id},friend_id.eq.${myProfile.id}`);
 
-signupBtn.onclick = async () => {
-  const { data } = await supa.auth.signUp({
-    email: email.value,
-    password: password.value
-  });
-  if (data.user) {
-    await supa.from("profiles").insert({
-      id: data.user.id,
-      username: email.value.split("@")[0]
+    const list = document.getElementById("friendsList");
+    list.innerHTML = "";
+
+    data.forEach(row => {
+      const isMe = row.user_id === myProfile.id;
+      const friend = isMe ? row.friend_profile : row.user_profile;
+
+      const div = document.createElement("div");
+      div.textContent = friend.username;
+      div.style.cursor = "pointer";
+      div.onclick = () => openChat(friend);
+      list.appendChild(div);
     });
   }
-};
 
-logoutBtn.onclick = async () => {
-  await supa.auth.signOut();
-};
+  async function loadOnlineUsers() {
+    const { data } = await supa.from("profiles").select("id, username");
+    const list = document.getElementById("onlineUsers");
+    list.innerHTML = "";
+
+    data.filter(u => u.id !== myProfile.id).forEach(u => {
+      const row = document.createElement("div");
+      row.textContent = "🟢 " + u.username;
+      list.appendChild(row);
+    });
+  }
+
+  async function loadFriendRequests() {
+    const { data } = await supa
+      .from("friend_requests")
+      .select(`id, from_user, profiles:from_user(username)`)
+      .eq("to_user", myProfile.id)
+      .eq("status", "pending");
+
+    const box = document.getElementById("friendRequests");
+    box.innerHTML = "";
+
+    data.forEach(req => {
+      const div = document.createElement("div");
+      div.textContent = req.profiles.username;
+      box.appendChild(div);
+    });
+  }
+
+  supa.auth.onAuthStateChange((_, session) => {
+    session?.user ? showApp(session.user) : showAuth();
+  });
+
+  document.getElementById("loginBtn").onclick = async () => {
+    await supa.auth.signInWithPassword({
+      email: email.value,
+      password: password.value
+    });
+  };
+
+  document.getElementById("signupBtn").onclick = async () => {
+    await supa.auth.signUp({
+      email: email.value,
+      password: password.value
+    });
+  };
+
+  document.getElementById("logoutBtn").onclick = async () => {
+    await supa.auth.signOut();
+  };
+
+  document.getElementById("backBtn").onclick = showHome;
 </script>
 
 </body>
