@@ -131,6 +131,9 @@ const backBtn = document.getElementById("backBtn");
 
 let myProfile = null;
 
+/* ===============================
+   VIEW HELPERS
+================================ */
 function showAuth() {
   authView.style.display = "flex";
   appView.style.display = "none";
@@ -141,19 +144,16 @@ function showHome() {
   chatView.style.display = "none";
 }
 
-async function showApp(user) {            // FIX
-  myProfile = await loadMyProfile(user);
-  document.getElementById("welcomeText").textContent =
-    "Welcome, " + myProfile.username;
-
-  authView.style.display = "none";
-  appView.style.display = "flex";
-
-  showHome();
-  loadFriends();
-  loadOnlineUsers();
+function openChat(friend) {
+  document.getElementById("chatTitle").textContent =
+    "Chat with " + friend.username;
+  homeView.style.display = "none";
+  chatView.style.display = "block";
 }
 
+/* ===============================
+   PROFILE
+================================ */
 async function loadMyProfile(user) {
   const { data } = await supa
     .from("profiles")
@@ -163,22 +163,88 @@ async function loadMyProfile(user) {
   return data;
 }
 
+/* ===============================
+   ✅ RESTORED: FRIENDS
+================================ */
+async function loadFriends() {
+  const { data: { user } } = await supa.auth.getUser();
+  if (!user) return;
+
+  const { data } = await supa
+    .from("friends")
+    .select(`
+      user_id,
+      friend_id,
+      user_profile:profiles!friends_user_id_fkey ( username ),
+      friend_profile:profiles!friends_friend_id_fkey ( username )
+    `)
+    .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`);
+
+  friendsList.innerHTML = "";
+
+  data.forEach(row => {
+    const friend = row.user_id === user.id
+      ? row.friend_profile
+      : row.user_profile;
+
+    if (!friend) return;
+
+    const div = document.createElement("div");
+    div.className = "list-item";
+    div.textContent = friend.username;
+    div.onclick = () => openChat(friend);
+
+    friendsList.appendChild(div);
+  });
+}
+
+/* ===============================
+   ✅ RESTORED: ONLINE USERS
+================================ */
+async function loadOnlineUsers() {
+  const { data } = await supa
+    .from("profiles")
+    .select("id, username");
+
+  onlineUsers.innerHTML = "";
+
+  data
+    .filter(u => u.id !== myProfile.id)
+    .forEach(u => {
+      const div = document.createElement("div");
+      div.className = "list-item";
+      div.textContent = "🟢 " + u.username;
+      onlineUsers.appendChild(div);
+    });
+}
+
+/* ===============================
+   AUTH STATE
+================================ */
 supa.auth.onAuthStateChange(async (_, session) => {
   if (session?.user) {
-    await showApp(session.user);
+    myProfile = await loadMyProfile(session.user);
+    welcomeText.textContent = "Welcome, " + myProfile.username;
+
+    authView.style.display = "none";
+    appView.style.display = "flex";
+
+    showHome();
+    loadFriends();
+    loadOnlineUsers();
   } else {
     showAuth();
   }
 });
 
+/* ===============================
+   AUTH ACTIONS
+================================ */
 loginBtn.onclick = async () => {
   await supa.auth.signInWithPassword({
     email: email.value,
     password: password.value
   });
-
-  const { data } = await supa.auth.getUser(); // FIX
-  if (data.user) await showApp(data.user);   // FIX
 };
 
 signupBtn.onclick = async () => {
@@ -192,7 +258,6 @@ signupBtn.onclick = async () => {
       id: data.user.id,
       username: email.value.split("@")[0]
     });
-    await showApp(data.user);                // FIX
   }
 };
 
