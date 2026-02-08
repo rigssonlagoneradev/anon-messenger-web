@@ -113,11 +113,34 @@
     appView.style.display = "none";
   }
 
-  function showApp(user) {
-    authView.style.display = "none";
-    appView.style.display = "flex";
-    welcomeText.textContent = `Logged in as ${user.email}`;
+  async function showApp(user) {
+  authView.style.display = "none";
+  appView.style.display = "flex";
+
+  const profile = await loadMyProfile(user);
+
+  if (!profile) return;
+
+  document.getElementById("welcomeText").textContent =
+    `Welcome, ${profile.username}`;
   }
+
+  async function loadMyProfile(user) {
+  const { data, error } = await supa
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .single();
+
+  if (error) {
+    console.error(error);
+    alert("Failed to load profile");
+    return null;
+  }
+
+  return data;
+}
+
 
   // ===============================
   // AUTH STATE LISTENER (NO FLICKER)
@@ -201,4 +224,5 @@
 
 </body>
 </html>
+
 
