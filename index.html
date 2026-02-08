@@ -87,7 +87,6 @@
 </div>
 
 <!-- APP VIEW -->
-<!-- APP VIEW -->
 <div id="app" class="center">
   <div class="card" style="width:100%; max-width:420px;">
     <h1 id="welcomeText"></h1>
@@ -141,6 +140,8 @@
   setInterval(loadOnlineUsers, 10_000); // every 10s
   loadFriendRequests();
   setInterval(loadFriendRequests, 10_000);
+  loadFriends();
+
   }
 
 
@@ -293,29 +294,73 @@ function renderFriendRequests(requests) {
     row.appendChild(actions);
     container.appendChild(row);
   }
+  }
+  async function acceptRequest(req) {
+    await supa.from("friends").insert([
+      { user_id: myProfile.id, friend_id: req.from_user },
+      { user_id: req.from_user, friend_id: myProfile.id }
+    ]);
+  
+    await supa
+      .from("friend_requests")
+      .update({ status: "accepted" })
+      .eq("id", req.id);
+  
+    loadFriendRequests();
+  }
+
+  async function declineRequest(requestId) {
+    await supa
+      .from("friend_requests")
+      .delete()
+      .eq("id", requestId);
+  
+    loadFriendRequests();
+  }
+  async function loadFriends() {
+  const {
+    data: { user }
+  } = await supa.auth.getUser();
+
+  if (!user) return;
+
+  const { data, error } = await supa
+    .from("friends")
+    .select(`
+      user_id,
+      friend_id,
+      profiles!friends_user_id_fkey ( username ),
+      profiles!friends_friend_id_fkey ( username )
+    `)
+    .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`);
+
+  if (error) {
+    console.error("Load friends error:", error);
+    return;
+  }
+
+  const list = document.getElementById("friendsList");
+  list.innerHTML = "";
+
+  data.forEach(row => {
+    const isUser = row.user_id === user.id;
+    const friendProfile = isUser
+      ? row.profiles_friend_id_fkey
+      : row.profiles_user_id_fkey;
+
+    const div = document.createElement("div");
+    div.style.padding = "8px";
+    div.style.borderBottom = "1px solid #eee";
+    div.textContent = friendProfile?.username || "Unknown";
+
+    list.appendChild(div);
+  });
+
+  if (data.length === 0) {
+    list.innerHTML = "<p>No friends yet</p>";
+  }
 }
-async function acceptRequest(req) {
-  await supa.from("friends").insert([
-    { user_id: myProfile.id, friend_id: req.from_user },
-    { user_id: req.from_user, friend_id: myProfile.id }
-  ]);
 
-  await supa
-    .from("friend_requests")
-    .update({ status: "accepted" })
-    .eq("id", req.id);
-
-  loadFriendRequests();
-}
-
-async function declineRequest(requestId) {
-  await supa
-    .from("friend_requests")
-    .delete()
-    .eq("id", requestId);
-
-  loadFriendRequests();
-}
 
 
 
@@ -340,6 +385,7 @@ async function declineRequest(requestId) {
 
     const { error } = await supa.auth.signInWithPassword({ email, password });
     if (error) alert(error.message);
+    loadFriends();
   };
 
   // ===============================
@@ -390,7 +436,12 @@ async function declineRequest(requestId) {
 
   // 3️⃣ Go to app
   showApp(user);
-};
+  };
+  <div id="friendsSection">
+  <h3>👥 Your Friends</h3>
+  <div id="friendsList"></div>
+  </div>
+
 
 
   // ===============================
@@ -403,6 +454,7 @@ async function declineRequest(requestId) {
 
 </body>
 </html>
+
 
 
 
