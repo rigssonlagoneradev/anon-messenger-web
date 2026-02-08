@@ -138,9 +138,6 @@
 </div>
 
 <script>
-  // ===============================
-  // SUPABASE INIT (ONCE)
-  // ===============================
   const SUPABASE_URL = "https://mdfwcpzxanraetentncb.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1kZndjcHp4YW5yYWV0ZW50bmNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA0OTk0NDIsImV4cCI6MjA4NjA3NTQ0Mn0.wjBSHwJssJOKlU1XmzoP0Sf21s5ZBRR9-2YdLwV7ISw";
 
@@ -151,18 +148,7 @@
 
   const authView = document.getElementById("auth");
   const appView = document.getElementById("app");
-
-  // ===============================
-  // AUTH STATE (NO FLICKER)
-  // ===============================
-  async function checkSession() {
-    const { data } = await supabase.auth.getSession();
-    if (data.session) {
-      showApp(data.session.user);
-    } else {
-      showAuth();
-    }
-  }
+  const welcomeText = document.getElementById("welcomeText");
 
   function showAuth() {
     authView.style.display = "flex";
@@ -172,13 +158,20 @@
   function showApp(user) {
     authView.style.display = "none";
     appView.style.display = "flex";
-    document.getElementById("welcomeText").textContent =
-      `Logged in as ${user.email}`;
+    welcomeText.textContent = `Logged in as ${user.email}`;
   }
 
-  // ===============================
+  // 🔑 SINGLE SOURCE OF TRUTH
+  supabase.auth.onAuthStateChange((_event, session) => {
+    console.log("AUTH STATE:", _event, session);
+    if (session?.user) {
+      showApp(session.user);
+    } else {
+      showAuth();
+    }
+  });
+
   // LOGIN
-  // ===============================
   document.getElementById("loginBtn").onclick = async () => {
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value;
@@ -188,22 +181,17 @@
       return;
     }
 
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signInWithPassword({
       email,
       password
     });
 
     if (error) {
       alert(error.message);
-      return;
     }
-
-    showApp(data.user);
   };
 
-  // ===============================
-  // SIGNUP + PROFILE INSERT
-  // ===============================
+  // SIGNUP
   document.getElementById("signupBtn").onclick = async () => {
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value;
@@ -223,40 +211,30 @@
       return;
     }
 
-    const user = data.user;
-    if (!user) {
-      alert("Check your email to confirm signup.");
+    if (!data.user) {
+      alert("Check email to confirm account.");
       return;
     }
 
-    // INSERT PROFILE (this is what was missing before)
     const { error: profileError } = await supabase
       .from("profiles")
       .insert({
-        id: user.id,
+        id: data.user.id,
         username: email.split("@")[0],
         avatar_url: null
       });
 
     if (profileError) {
-      alert("Profile error: " + profileError.message);
-      return;
+      alert(profileError.message);
     }
-
-    showApp(user);
   };
 
-  // ===============================
   // LOGOUT
-  // ===============================
   document.getElementById("logoutBtn").onclick = async () => {
     await supabase.auth.signOut();
-    showAuth();
   };
-
-  // INIT
-  checkSession();
 </script>
 
 </body>
 </html>
+
