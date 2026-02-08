@@ -42,22 +42,73 @@
       border: 1px solid #ccc;
       font-size: 15px;
     }
-    button {
-      width: 100%;
-      padding: 12px;
-      border-radius: 10px;
-      border: none;
-      font-size: 15px;
-      cursor: pointer;
-    }
-    .small-btn {
-      font-size: 12px;
-      padding: 3px 7px;
-      border-radius: 8px;
-      background: #e5e7eb;
-      border: none;
-      cursor: pointer;
-    }
+    /* ===============================
+   GLOBAL BUTTON SYSTEM
+   =============================== */
+
+button {
+  appearance: none;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: #e5e7eb;
+  color: #111;
+  }
+  
+      button:hover {
+        transform: translateY(-1px);
+        opacity: 0.95;
+      }
+      
+      button:active {
+        transform: translateY(0);
+      }
+      
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      
+      /* Primary (blue) */
+      .btn-primary {
+        background: #2563eb;
+        color: white;
+      }
+      
+      /* Secondary (soft gray) */
+      .btn-secondary {
+        background: #f1f5f9;
+        color: #111;
+      }
+      
+      /* Ghost / subtle */
+      .btn-ghost {
+        background: transparent;
+        color: #2563eb;
+      }
+      
+      /* Danger */
+      .btn-danger {
+        background: #fee2e2;
+        color: #b91c1c;
+      }
+      
+      /* Small buttons (Add Friend, Accept, Decline) */
+      .btn-small {
+        padding: 6px 10px;
+        font-size: 12px;
+        border-radius: 10px;
+      }
+      
+      /* Full-width utility */
+      .btn-full {
+        width: 100%;
+      }
+
     .primary { background: #1f6feb; color: white; margin-bottom: 8px; }
     .secondary { background: #e5e7eb; }
     .note { font-size: 12px; color: #777; margin-top: 12px; }
@@ -89,8 +140,8 @@
     <input id="email" type="email" placeholder="Email" />
     <input id="password" type="password" placeholder="Password" />
 
-    <button class="primary" id="loginBtn">Login</button>
-    <button class="secondary" id="signupBtn">Create Account</button>
+    <button class="btn-primary btn-full" id="loginBtn">Login</button>
+    <button class="btn-secondary btn-full" id="signupBtn">Create Account</button>
 
     <div class="note">⚠ No account recovery. Lost = gone.</div>
   </div>
@@ -111,9 +162,7 @@
     <h3 style="margin-top:16px;">🟢 Online Users</h3>
     <div id="onlineUsers"></div>
 
-    <button class="primary" id="logoutBtn" style="margin-top:16px;">
-      Logout
-    </button>
+    <button class="btn-primary btn-full" id="logoutBtn">Logout</button>
     
   </div>
 </div>
@@ -221,7 +270,7 @@ async function renderOnlineUsers(users) {
 
     const btn = document.createElement("button");
     btn.textContent = "Add Friend";
-    btn.className = "small-btn";
+    btn.className = "btn-secondary btn-small";
     btn.onclick = () => sendFriendRequest(user.id, btn);
 
     row.appendChild(name);
@@ -295,12 +344,11 @@ function renderFriendRequests(requests) {
 
     const accept = document.createElement("button");
     accept.textContent = "Accept";
-    accept.style.marginRight = "6px";
-    accept.onclick = () => acceptRequest(req);
-
+    accept.className = "btn-primary btn-small";
+    
     const decline = document.createElement("button");
     decline.textContent = "Decline";
-    decline.onclick = () => declineRequest(req.id);
+    decline.className = "btn-danger btn-small";
 
     actions.appendChild(accept);
     actions.appendChild(decline);
@@ -466,6 +514,7 @@ function renderFriendRequests(requests) {
 
 </body>
 </html>
+
 
 
 
