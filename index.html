@@ -101,6 +101,8 @@
 </div>
 
 <script>
+  console.log("SCRIPT LOADED");
+
 const supa = window.supabase.createClient(
   "https://mdfwcpzxanraetentncb.supabase.co",
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1kZndjcHp4YW5yYWV0ZW50bmNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA0OTk0NDIsImV4cCI6MjA4NjA3NTQ0Mn0.wjBSHwJssJOKlU1XmzoP0Sf21s5ZBRR9-2YdLwV7ISw"
@@ -169,6 +171,8 @@ supa.auth.onAuthStateChange(async (_, session) => {
 });
 
 /* LOGIN */
+  console.log("BINDING LOGIN BUTTON", loginBtn);
+
 loginBtn.onclick = async () => {
   if (!email.value || !password.value) {
     alert("Enter email and password");
@@ -228,5 +232,6 @@ backBtn.onclick = showHome;
 
 </body>
 </html>
+
 
 
