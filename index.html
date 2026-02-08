@@ -144,22 +144,52 @@
   // SIGNUP + PROFILE INSERT
   // ===============================
   document.getElementById("signupBtn").onclick = async () => {
-    const email = document.getElementById("email").value.trim();
-    const password = document.getElementById("password").value;
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
 
-    if (!email || !password) return alert("Enter email and password");
+  if (!email || !password) {
+    alert("Enter email and password");
+    return;
+  }
 
-    const { data, error } = await supa.auth.signUp({ email, password });
-    if (error) return alert(error.message);
+  // 1️⃣ Create auth account
+  const { data, error } = await supa.auth.signUp({
+    email,
+    password
+  });
 
-    if (data.user) {
-      await supa.from("profiles").insert({
-        id: data.user.id,
-        username: email.split("@")[0],
-        avatar_url: null
-      });
-    }
-  };
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  const user = data.user;
+
+  // If email confirmation is ON, user may be null
+  if (!user) {
+    alert("Account created. Please confirm your email, then log in.");
+    return;
+  }
+
+  // 2️⃣ INSERT PROFILE (THIS WAS MISSING BEFORE)
+  const { error: profileError } = await supa
+    .from("profiles")
+    .insert({
+      id: user.id,                     // MUST match auth.users.id
+      username: email.split("@")[0],   // temporary username
+      avatar_url: null
+    });
+
+  if (profileError) {
+    console.error(profileError);
+    alert("Profile creation failed: " + profileError.message);
+    return;
+  }
+
+  // 3️⃣ Go to app
+  showApp(user);
+};
+
 
   // ===============================
   // LOGOUT
@@ -171,3 +201,4 @@
 
 </body>
 </html>
+
