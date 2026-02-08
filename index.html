@@ -43,7 +43,7 @@
       margin-bottom: 10px;
       border-radius: 10px;
       border: 1px solid #ccc;
-      font-size: 16px; /* ✅ prevents mobile zoom */
+      font-size: 16px; /* prevent mobile zoom */
     }
 
     textarea {
@@ -93,7 +93,7 @@
 <div id="app" class="center">
   <div class="card">
 
-    <!-- HOME / WELCOME -->
+    <!-- HOME VIEW -->
     <div id="homeView">
       <h1 id="welcomeText"></h1>
 
@@ -130,16 +130,29 @@ const supa = window.supabase.createClient(
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1kZndjcHp4YW5yYWV0ZW50bmNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA0OTk0NDIsImV4cCI6MjA4NjA3NTQ0Mn0.wjBSHwJssJOKlU1XmzoP0Sf21s5ZBRR9-2YdLwV7ISw"
 );
 
+/* ===============================
+   ✅ DOM BINDINGS (FIX)
+================================ */
 const authView = document.getElementById("auth");
 const appView = document.getElementById("app");
 const homeView = document.getElementById("homeView");
 const chatView = document.getElementById("chatView");
 
+const email = document.getElementById("email");
+const password = document.getElementById("password");
+const loginBtn = document.getElementById("loginBtn");
+const signupBtn = document.getElementById("signupBtn");
+const logoutBtn = document.getElementById("logoutBtn");
+const backBtn = document.getElementById("backBtn");
+
+/* ===============================
+   STATE
+================================ */
 let myProfile = null;
 let currentChatFriend = null;
 
 /* ===============================
-   VIEW SWITCHING (DESIGN ONLY)
+   VIEW SWITCHING (UNCHANGED)
 ================================ */
 function showAuth() {
   authView.style.display = "flex";
@@ -174,7 +187,7 @@ async function loadMyProfile(user) {
 }
 
 /* ===============================
-   FRIENDS LIST (CLICK → CHAT)
+   FRIENDS LIST
 ================================ */
 async function loadFriends() {
   const { data: { user } } = await supa.auth.getUser();
@@ -210,7 +223,7 @@ async function loadFriends() {
 }
 
 /* ===============================
-   ONLINE USERS (DISPLAY ONLY)
+   ONLINE USERS
 ================================ */
 async function loadOnlineUsers() {
   const { data } = await supa.from("profiles").select("id, username");
@@ -228,7 +241,7 @@ async function loadOnlineUsers() {
 }
 
 /* ===============================
-   AUTH STATE (UNCHANGED)
+   AUTH STATE
 ================================ */
 supa.auth.onAuthStateChange(async (_, session) => {
   if (session?.user) {
@@ -248,7 +261,7 @@ supa.auth.onAuthStateChange(async (_, session) => {
 });
 
 /* ===============================
-   AUTH BUTTONS (UNCHANGED)
+   AUTH BUTTONS
 ================================ */
 loginBtn.onclick = async () => {
   await supa.auth.signInWithPassword({
