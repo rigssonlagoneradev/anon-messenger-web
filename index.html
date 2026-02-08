@@ -54,6 +54,15 @@
     .secondary { background: #e5e7eb; }
     .note { font-size: 12px; color: #777; margin-top: 12px; }
     #app { display: none; }
+    .small-btn {
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      background: #e5e7eb;
+      border: none;
+      cursor: pointer;
+    }
+
   </style>
 </head>
 
@@ -88,11 +97,15 @@
 
 <!-- APP VIEW -->
 <div id="app" class="center">
-  <div class="card" style="width:100%; max-width:420px;">
+  <div class="card" style="width:100%; max-width:300px;">
     <h1 id="welcomeText"></h1>
 
     <h3 style="margin-top:16px;">🔔 Friend Requests</h3>
     <div id="friendRequests"></div>
+    <div id="friendsSection">
+    <h3>👥 Your Friends</h3>
+    <div id="friendsList"></div>
+    </div>
 
     <h3 style="margin-top:16px;">🟢 Online Users</h3>
     <div id="onlineUsers"></div>
@@ -100,6 +113,7 @@
     <button class="primary" id="logoutBtn" style="margin-top:16px;">
       Logout
     </button>
+    
   </div>
 </div>
 
@@ -206,7 +220,7 @@ async function renderOnlineUsers(users) {
 
     const btn = document.createElement("button");
     btn.textContent = "Add Friend";
-    btn.style.fontSize = "12px";
+    btn.className = "small-btn";
     btn.onclick = () => sendFriendRequest(user.id, btn);
 
     row.appendChild(name);
@@ -437,10 +451,7 @@ function renderFriendRequests(requests) {
   // 3️⃣ Go to app
   showApp(user);
   };
-  <div id="friendsSection">
-  <h3>👥 Your Friends</h3>
-  <div id="friendsList"></div>
-  </div>
+  
 
 
 
@@ -454,6 +465,7 @@ function renderFriendRequests(requests) {
 
 </body>
 </html>
+
 
 
 
