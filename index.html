@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AnonyMouse</title>
 
+  <!-- Supabase v2 CDN (LOAD ONCE) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
@@ -30,48 +31,90 @@
       box-shadow: 0 10px 30px rgba(0,0,0,.1);
       text-align: center;
     }
+    .logo svg { width: 64px; height: 64px; }
+    h1 { margin: 12px 0 6px; }
+    .sub { font-size: 13px; color: #666; margin-bottom: 20px; }
     input {
       width: 100%;
       padding: 12px;
       margin-bottom: 10px;
       border-radius: 10px;
       border: 1px solid #ccc;
-    }
-
-    button {
-      border: none;
-      border-radius: 12px;
-      padding: 12px 16px;
       font-size: 15px;
-      font-weight: 600;
-      cursor: pointer;
-      background: #e5e7eb;
     }
-    .btn-primary { background: #2563eb; color: #fff; }
-    .btn-secondary { background: #f1f5f9; }
-    .btn-danger { background: #fee2e2; color: #b91c1c; }
-    .btn-small { padding: 6px 10px; font-size: 12px; }
-    .btn-full { width: 100%; }
+    /* ===============================
+   GLOBAL BUTTON SYSTEM
+   =============================== */
 
+button {
+  appearance: none;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: #e5e7eb;
+  color: #111;
+  }
+  
+      button:hover {
+        transform: translateY(-1px);
+        opacity: 0.95;
+      }
+      
+      button:active {
+        transform: translateY(0);
+      }
+      
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      
+      /* Primary (blue) */
+      .btn-primary {
+        background: #2563eb;
+        color: white;
+      }
+      
+      /* Secondary (soft gray) */
+      .btn-secondary {
+        background: #f1f5f9;
+        color: #111;
+      }
+      
+      /* Ghost / subtle */
+      .btn-ghost {
+        background: transparent;
+        color: #2563eb;
+      }
+      
+      /* Danger */
+      .btn-danger {
+        background: #fee2e2;
+        color: #b91c1c;
+      }
+      
+      /* Small buttons (Add Friend, Accept, Decline) */
+      .btn-small {
+        padding: 6px 10px;
+        font-size: 12px;
+        border-radius: 10px;
+      }
+      
+      /* Full-width utility */
+      .btn-full {
+        width: 100%;
+      }
+
+    .primary { background: #1f6feb; color: white; margin-bottom: 8px; }
+    .secondary { background: #e5e7eb; }
+    .note { font-size: 12px; color: #777; margin-top: 12px; }
     #app { display: none; }
+    
 
-    /* CHAT PANEL */
-    #chatPanel {
-      display: none;
-      margin-top: 16px;
-      border-top: 1px solid #eee;
-      padding-top: 12px;
-      text-align: left;
-    }
-    #chatMessages {
-      height: 180px;
-      overflow-y: auto;
-      background: #f8fafc;
-      border-radius: 12px;
-      padding: 10px;
-      margin-bottom: 8px;
-      font-size: 14px;
-    }
   </style>
 </head>
 
@@ -80,95 +123,274 @@
 <!-- AUTH VIEW -->
 <div id="auth" class="center">
   <div class="card">
+    <div class="logo">
+      <!-- Mouse Logo -->
+      <svg viewBox="0 0 64 64">
+        <circle cx="32" cy="36" r="16" fill="#1f6feb"/>
+        <circle cx="18" cy="22" r="8" fill="#1f6feb"/>
+        <circle cx="46" cy="22" r="8" fill="#1f6feb"/>
+        <circle cx="27" cy="36" r="2" fill="white"/>
+        <circle cx="37" cy="36" r="2" fill="white"/>
+      </svg>
+    </div>
+
     <h1>Welcome to AnonyMouse</h1>
-    <input id="email" placeholder="Email" />
+    <div class="sub">Private. Anonymous. No history.</div>
+
+    <input id="email" type="email" placeholder="Email" />
     <input id="password" type="password" placeholder="Password" />
+
     <button class="btn-primary btn-full" id="loginBtn">Login</button>
     <button class="btn-secondary btn-full" id="signupBtn">Create Account</button>
+
+    <div class="note">⚠ No account recovery. Lost = gone.</div>
   </div>
 </div>
 
 <!-- APP VIEW -->
 <div id="app" class="center">
-  <div class="card" style="max-width:320px;">
+  <div class="card" style="width:100%; max-width:300px;">
     <h1 id="welcomeText"></h1>
 
-    <h3>🔔 Friend Requests</h3>
+    <h3 style="margin-top:16px;">🔔 Friend Requests</h3>
     <div id="friendRequests"></div>
-
+    <div id="friendsSection">
     <h3>👥 Your Friends</h3>
     <div id="friendsList"></div>
-
-    <h3>🟢 Online Users</h3>
-    <div id="onlineUsers"></div>
-
-    <!-- CHAT PANEL (NEW) -->
-    <div id="chatPanel">
-      <h3 id="chatTitle">💬 Chat</h3>
-      <div id="chatMessages">
-        <p style="color:#888;">No messages yet</p>
-      </div>
-      <div style="display:flex; gap:6px;">
-        <input id="chatInput" placeholder="Type a message…" />
-        <button class="btn-primary btn-small" id="sendBtn">Send</button>
-      </div>
     </div>
 
-    <button class="btn-primary btn-full" id="logoutBtn" style="margin-top:12px;">
-      Logout
-    </button>
+    <h3 style="margin-top:16px;">🟢 Online Users</h3>
+    <div id="onlineUsers"></div>
+
+    <button class="btn-primary btn-full" id="logoutBtn">Logout</button>
+    
   </div>
 </div>
 
+
 <script>
-/* ===============================
-   SUPABASE INIT (UNCHANGED)
-   =============================== */
-const supa = window.supabase.createClient(
-  "https://mdfwcpzxanraetentncb.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1kZndjcHp4YW5yYWV0ZW50bmNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA0OTk0NDIsImV4cCI6MjA4NjA3NTQ0Mn0.wjBSHwJssJOKlU1XmzoP0Sf21s5ZBRR9-2YdLwV7ISw"
-);
+  // ===============================
+  // SUPABASE INIT (SINGLE INSTANCE)
+  // ===============================
+  const supa = window.supabase.createClient(
+    "https://mdfwcpzxanraetentncb.supabase.co",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1kZndjcHp4YW5yYWV0ZW50bmNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA0OTk0NDIsImV4cCI6MjA4NjA3NTQ0Mn0.wjBSHwJssJOKlU1XmzoP0Sf21s5ZBRR9-2YdLwV7ISw"
+  );
 
-let myProfile = null;
+  const authView = document.getElementById("auth");
+  const appView = document.getElementById("app");
+  const welcomeText = document.getElementById("welcomeText");
 
-/* ===============================
-   CHAT STATE (NEW)
-   =============================== */
-let currentChatFriend = null;
+  function showAuth() {
+    authView.style.display = "flex";
+    appView.style.display = "none";
+  }
 
-/* ===============================
-   CHAT OPEN (NEW)
-   =============================== */
-function openChat(friend) {
-  currentChatFriend = friend;
-  chatPanel.style.display = "block";
-  chatTitle.textContent = `💬 Chat with ${friend.username}`;
-  chatMessages.innerHTML =
-    "<p style='color:#888;'>🔒 Secure P2P chat (connecting…)</p>";
+  async function showApp(user) {
+  authView.style.display = "none";
+  appView.style.display = "flex";
+
+  myProfile = await loadMyProfile(user);
+  if (!myProfile) return;
+
+  document.getElementById("welcomeText").textContent =
+    `Welcome, ${myProfile.username}`;
+
+  // Start presence
+  await heartbeat();
+  loadOnlineUsers();
+
+  setInterval(heartbeat, 30_000);      // every 30s
+  setInterval(loadOnlineUsers, 10_000); // every 10s
+  loadFriendRequests();
+  setInterval(loadFriendRequests, 10_000);
+  loadFriends();
+
+  }
+
+
+  async function loadMyProfile(user) {
+  const { data, error } = await supa
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .single();
+
+  if (error) {
+    console.error(error);
+    alert("Failed to load profile");
+    return null;
+  }
+
+  return data;
+  }
+  let myProfile = null;
+
+// Mark yourself online
+async function heartbeat() {
+  if (!myProfile) return;
+
+  await supa
+    .from("profiles")
+    .update({ last_seen: new Date().toISOString() })
+    .eq("id", myProfile.id);
 }
 
-/* ===============================
-   TEMP LOCAL SEND (NO NETWORK)
-   =============================== */
-sendBtn.onclick = () => {
-  if (!currentChatFriend) return;
-  const text = chatInput.value.trim();
-  if (!text) return;
+// Fetch online users
+async function loadOnlineUsers() {
+  const oneMinuteAgo = new Date(Date.now() - 60 * 1000).toISOString();
 
-  const msg = document.createElement("div");
-  msg.textContent = "You: " + text;
-  chatMessages.appendChild(msg);
-  chatInput.value = "";
-};
+  const { data, error } = await supa
+    .from("profiles")
+    .select("id, username")
+    .gte("last_seen", oneMinuteAgo);
 
-/* ===============================
-   FRIEND LIST CLICK MERGE ONLY
-   =============================== */
-async function loadFriends() {
-  const { data: { user } } = await supa.auth.getUser();
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  renderOnlineUsers(data);
+}
+
+async function renderOnlineUsers(users) {
+  const container = document.getElementById("onlineUsers");
+  container.innerHTML = "";
+
+  for (const user of users.filter(u => u.id !== myProfile.id)) {
+    const row = document.createElement("div");
+    row.style.display = "flex";
+    row.style.alignItems = "center";
+    row.style.justifyContent = "space-between";
+    row.style.padding = "8px 0";
+    row.style.borderBottom = "1px solid #eee";
+
+    const name = document.createElement("span");
+    name.textContent = "🟢 " + user.username;
+
+    const btn = document.createElement("button");
+    btn.textContent = "Add Friend";
+    btn.className = "btn-secondary btn-small";
+    btn.onclick = () => sendFriendRequest(user.id, btn);
+
+    row.appendChild(name);
+    row.appendChild(btn);
+    container.appendChild(row);
+  }
+
+  if (!container.children.length) {
+    container.innerHTML = "<p style='color:#888'>No one online</p>";
+  }
+}
+  
+async function sendFriendRequest(targetUserId, button) {
+  button.disabled = true;
+  button.textContent = "Sent";
+
+  const { error } = await supa
+    .from("friend_requests")
+    .insert({
+      from_user: myProfile.id,
+      to_user: targetUserId
+    });
+
+  if (error) {
+    alert(error.message);
+    button.disabled = false;
+    button.textContent = "Add Friend";
+  }
+}
+  async function loadFriendRequests() {
+  const { data, error } = await supa
+    .from("friend_requests")
+    .select(`
+      id,
+      from_user,
+      profiles:from_user ( username )
+    `)
+    .eq("to_user", myProfile.id)
+    .eq("status", "pending");
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  renderFriendRequests(data);
+}
+
+function renderFriendRequests(requests) {
+  const container = document.getElementById("friendRequests");
+  container.innerHTML = "";
+
+  if (!requests.length) {
+    container.innerHTML =
+      "<p style='color:#888; font-size:13px;'>No pending requests</p>";
+    return;
+  }
+
+  for (const req of requests) {
+    const row = document.createElement("div");
+    row.style.display = "flex";
+    row.style.justifyContent = "space-between";
+    row.style.alignItems = "center";
+    row.style.padding = "8px 0";
+    row.style.borderBottom = "1px solid #eee";
+
+    const name = document.createElement("span");
+    name.textContent = req.profiles.username;
+
+    const actions = document.createElement("div");
+
+    const accept = document.createElement("button");
+    accept.textContent = "Accept";
+    accept.className = "btn-primary btn-small";
+    accept.onclick = () => acceptRequest(req);
+ 
+    const decline = document.createElement("button");
+    decline.textContent = "Decline";
+    decline.className = "btn-danger btn-small";
+
+    actions.appendChild(accept);
+    actions.appendChild(decline);
+
+    row.appendChild(name);
+    row.appendChild(actions);
+    container.appendChild(row);
+  }
+  }
+  async function acceptRequest(req) {
+  await supa.from("friends").insert([
+    { user_id: myProfile.id, friend_id: req.from_user },
+    { user_id: req.from_user, friend_id: myProfile.id }
+  ]);
+
+  await supa
+    .from("friend_requests")
+    .update({ status: "accepted" })
+    .eq("id", req.id);
+
+  loadFriendRequests();
+  loadFriends();
+}
+
+
+  async function declineRequest(requestId) {
+    await supa
+      .from("friend_requests")
+      .delete()
+      .eq("id", requestId);
+  
+    loadFriendRequests();
+  }
+  async function loadFriends() {
+  const {
+    data: { user }
+  } = await supa.auth.getUser();
+
   if (!user) return;
 
-  const { data } = await supa
+  const { data, error } = await supa
     .from("friends")
     .select(`
       user_id,
@@ -178,52 +400,116 @@ async function loadFriends() {
     `)
     .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`);
 
-  friendsList.innerHTML = "";
+  if (error) {
+    console.error("Load friends error:", error);
+    return;
+  }
+
+  const list = document.getElementById("friendsList");
+  list.innerHTML = "";
+
   data.forEach(row => {
-    const friend = row.user_id === user.id
-      ? row.friend_profile
-      : row.user_profile;
+    const isMe = row.user_id === user.id;
+    const friend = isMe ? row.friend_profile : row.user_profile;
+
+    if (!friend) return;
 
     const div = document.createElement("div");
+    div.style.padding = "8px 0";
+    div.style.borderBottom = "1px solid #eee";
     div.textContent = friend.username;
-    div.style.cursor = "pointer";
-    div.onclick = () => openChat(friend); // 👈 ONLY CHANGE
 
-    friendsList.appendChild(div);
+    list.appendChild(div);
   });
+
+  if (!data.length) {
+    list.innerHTML = "<p style='color:#888'>No friends yet</p>";
+  }
 }
 
-/* ===============================
-   AUTH (UNCHANGED)
-   =============================== */
-supa.auth.onAuthStateChange((_, session) => {
-  session ? showApp(session.user) : showAuth();
-});
 
-loginBtn.onclick = async () => {
-  await supa.auth.signInWithPassword({
-    email: email.value,
-    password: password.value
-  });
-};
 
-signupBtn.onclick = async () => {
-  const { data } = await supa.auth.signUp({
-    email: email.value,
-    password: password.value
+  // ===============================
+  // AUTH STATE LISTENER (NO FLICKER)
+  // ===============================
+  supa.auth.onAuthStateChange((event, session) => {
+    console.log("AUTH EVENT:", event);
+    session?.user ? showApp(session.user) : showAuth();
   });
-  if (data.user) {
-    await supa.from("profiles").insert({
-      id: data.user.id,
-      username: email.value.split("@")[0]
-    });
-    showApp(data.user);
+
+  // ===============================
+  // LOGIN
+  // ===============================
+  document.getElementById("loginBtn").onclick = async () => {
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+
+    if (!email || !password) return alert("Enter email and password");
+
+    const { error } = await supa.auth.signInWithPassword({ email, password });
+    if (error) alert(error.message);
+    loadFriends();
+  };
+
+  // ===============================
+  // SIGNUP + PROFILE INSERT
+  // ===============================
+  document.getElementById("signupBtn").onclick = async () => {
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+
+  if (!email || !password) {
+    alert("Enter email and password");
+    return;
   }
-};
 
-logoutBtn.onclick = async () => {
-  await supa.auth.signOut();
-};
+  // 1️⃣ Create auth account
+  const { data, error } = await supa.auth.signUp({
+    email,
+    password
+  });
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  const user = data.user;
+
+  // If email confirmation is ON, user may be null
+  if (!user) {
+    alert("Account created. Please confirm your email, then log in.");
+    return;
+  }
+
+  // 2️⃣ INSERT PROFILE (THIS WAS MISSING BEFORE)
+  const { error: profileError } = await supa
+    .from("profiles")
+    .insert({
+      id: user.id,                     // MUST match auth.users.id
+      username: email.split("@")[0],   // temporary username
+      avatar_url: null
+    });
+
+  if (profileError) {
+    console.error(profileError);
+    alert("Profile creation failed: " + profileError.message);
+    return;
+  }
+
+  // 3️⃣ Go to app
+  showApp(user);
+  };
+  
+
+
+
+  // ===============================
+  // LOGOUT
+  // ===============================
+  document.getElementById("logoutBtn").onclick = async () => {
+    await supa.auth.signOut();
+  };
 </script>
 
 </body>
