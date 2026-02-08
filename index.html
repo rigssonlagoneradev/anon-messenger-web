@@ -8,8 +8,15 @@
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
 <style>
-:root { --blue:#1e73e8; --bg:#f2f4f8; }
-* { box-sizing:border-box; font-family:system-ui; }
+:root {
+  --blue:#1e73e8;
+  --bg:#f2f4f8;
+}
+
+* {
+  box-sizing:border-box;
+  font-family:system-ui,-apple-system,BlinkMacSystemFont;
+}
 
 html,body {
   margin:0;
@@ -20,8 +27,8 @@ html,body {
 .center {
   min-height:100vh;
   display:flex;
-  justify-content:center;
   align-items:center;
+  justify-content:center;
 }
 
 .card {
@@ -29,7 +36,7 @@ html,body {
   width:90%;
   max-width:380px;
   padding:24px;
-  border-radius:14px;
+  border-radius:16px;
   box-shadow:0 10px 30px rgba(0,0,0,.15);
   text-align:center;
 }
@@ -38,15 +45,18 @@ input,button {
   width:100%;
   padding:12px;
   margin-top:10px;
-  border-radius:8px;
-  border:1px solid #ddd;
   font-size:16px;
+  border-radius:8px;
+}
+
+input {
+  border:1px solid #ddd;
 }
 
 button {
+  border:none;
   background:var(--blue);
   color:#fff;
-  border:none;
   cursor:pointer;
 }
 
@@ -69,34 +79,23 @@ header {
   text-align:center;
   font-weight:600;
 }
-
-main {
-  flex:1;
-  padding:16px;
-}
-
-.avatar {
-  width:48px;
-  height:48px;
-  border-radius:50%;
-  background:#ddd;
-}
 </style>
 </head>
 
 <body>
 
-<!-- AUTH -->
+<!-- AUTH VIEW -->
 <div id="auth" class="center">
   <div class="card">
-    <!-- SAFE CUSTOM MOUSE LOGO -->
-    <svg width="64" viewBox="0 0 100 100">
-      <circle cx="50" cy="55" r="28" fill="#1e73e8"/>
-      <circle cx="30" cy="35" r="14" fill="#1e73e8"/>
-      <circle cx="70" cy="35" r="14" fill="#1e73e8"/>
-      <circle cx="44" cy="52" r="4" fill="#fff"/>
-      <circle cx="56" cy="52" r="4" fill="#fff"/>
-      <circle cx="50" cy="60" r="3" fill="#fff"/>
+
+    <!-- Custom mouse logo (safe) -->
+    <svg width="70" viewBox="0 0 100 100">
+      <circle cx="50" cy="58" r="28" fill="#1e73e8"/>
+      <circle cx="32" cy="36" r="14" fill="#1e73e8"/>
+      <circle cx="68" cy="36" r="14" fill="#1e73e8"/>
+      <circle cx="44" cy="55" r="4" fill="#fff"/>
+      <circle cx="56" cy="55" r="4" fill="#fff"/>
+      <circle cx="50" cy="63" r="3" fill="#fff"/>
     </svg>
 
     <h2>Welcome to AnonyMouse</h2>
@@ -108,44 +107,45 @@ main {
     <button id="loginBtn">Login</button>
     <button id="createBtn" class="secondary">Create Account</button>
 
-    <small>⚠️ No account recovery</small>
+    <small>⚠️ No account recovery. Lost = gone.</small>
   </div>
 </div>
 
-<!-- APP -->
+<!-- APP VIEW -->
 <div id="app">
   <header>AnonyMouse</header>
-  <main>
-    <div style="display:flex;align-items:center;gap:12px;">
-      <img id="meAvatar" class="avatar">
-      <div>
-        <div id="meName"></div>
-        <small>You</small>
-      </div>
-    </div>
-  </main>
+  <div style="padding:16px;">
+    <h3 id="welcome"></h3>
+  </div>
 </div>
 
 <script>
-/* ===== SUPABASE INIT (ONCE) ===== */
+/* ================================
+   SUPABASE (INIT ONCE)
+================================ */
+const SUPABASE_URL = "https://mdfwcpzxanraetentncb.supabase.co";
+const SUPABASE_KEY = "sb_publishable_A9j8VGIbz-JikQzjbSm9vw_0qhrOLTk";
+
 const supabase = window.supabase.createClient(
-  "https://mdfwcpzxanraetentncb.supabase.co",
-  "sb_publishable_A9j8VGIbz-JikQzjbSm9vw_0qhrOLTk"
+  SUPABASE_URL,
+  SUPABASE_KEY
 );
 
-/* ===== DOM REFERENCES (FIX) ===== */
-const usernameInput = document.getElementById("username");
-const passwordInput = document.getElementById("password");
+/* ================================
+   DOM REFERENCES
+================================ */
 const authView = document.getElementById("auth");
 const appView = document.getElementById("app");
-const meName = document.getElementById("meName");
-const meAvatar = document.getElementById("meAvatar");
+const usernameInput = document.getElementById("username");
+const passwordInput = document.getElementById("password");
+const welcome = document.getElementById("welcome");
 
-/* ===== BUTTON HOOKS ===== */
-document.getElementById("loginBtn").onclick = login;
-document.getElementById("createBtn").onclick = createAccount;
+document.getElementById("loginBtn").addEventListener("click", login);
+document.getElementById("createBtn").addEventListener("click", createAccount);
 
-/* ===== AUTH ===== */
+/* ================================
+   AUTH FUNCTIONS
+================================ */
 async function createAccount() {
   const username = usernameInput.value.trim();
   const password = passwordInput.value;
@@ -158,10 +158,14 @@ async function createAccount() {
   const email = `${username}@anomymouse.local`;
 
   const { data, error } = await supabase.auth.signUp({
-    email, password
+    email,
+    password
   });
 
-  if (error) return alert(error.message);
+  if (error) {
+    alert(error.message);
+    return;
+  }
 
   await supabase.from("profiles").insert({
     id: data.user.id,
@@ -184,33 +188,37 @@ async function login() {
   const email = `${username}@anomymouse.local`;
 
   const { error } = await supabase.auth.signInWithPassword({
-    email, password
+    email,
+    password
   });
 
-  if (error) return alert(error.message);
+  if (error) {
+    alert(error.message);
+    return;
+  }
 
   loadApp();
 }
 
-/* ===== LOAD SESSION ===== */
+/* ================================
+   LOAD APP AFTER LOGIN
+================================ */
 async function loadApp() {
   const { data:{ user } } = await supabase.auth.getUser();
   if (!user) return;
 
   const { data:profile } = await supabase
     .from("profiles")
-    .select("*")
+    .select("username")
     .eq("id", user.id)
     .single();
 
   authView.style.display = "none";
   appView.style.display = "flex";
-
-  meName.textContent = profile.username;
-  meAvatar.src = profile.avatar_url || "https://placehold.co/100x100";
+  welcome.textContent = `Hello, ${profile.username}`;
 }
 
-/* Auto-login */
+/* Auto-login if session exists */
 supabase.auth.getSession().then(({ data }) => {
   if (data.session) loadApp();
 });
