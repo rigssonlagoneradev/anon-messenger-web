@@ -5,30 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>AnonyMouse</title>
 
+<!-- Supabase (ONLY ONCE) -->
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
 <style>
-:root {
-  --blue:#1e73e8;
-  --bg:#f2f4f8;
-}
-
-* {
-  box-sizing:border-box;
-  font-family:system-ui,-apple-system,BlinkMacSystemFont;
-}
-
-html,body {
+body {
   margin:0;
-  height:100%;
-  background:var(--bg);
+  font-family:system-ui,-apple-system;
+  background:#f2f4f8;
 }
 
 .center {
   min-height:100vh;
   display:flex;
-  align-items:center;
   justify-content:center;
+  align-items:center;
 }
 
 .card {
@@ -55,7 +46,7 @@ input {
 
 button {
   border:none;
-  background:var(--blue);
+  background:#1e73e8;
   color:#fff;
   cursor:pointer;
 }
@@ -67,28 +58,16 @@ button.secondary {
 
 #app {
   display:none;
-  height:100vh;
-  display:flex;
-  flex-direction:column;
-}
-
-header {
-  background:var(--blue);
-  color:#fff;
-  padding:14px;
-  text-align:center;
-  font-weight:600;
 }
 </style>
 </head>
 
 <body>
 
-<!-- AUTH VIEW -->
 <div id="auth" class="center">
   <div class="card">
 
-    <!-- Custom mouse logo (safe) -->
+    <!-- Mouse logo -->
     <svg width="70" viewBox="0 0 100 100">
       <circle cx="50" cy="58" r="28" fill="#1e73e8"/>
       <circle cx="32" cy="36" r="14" fill="#1e73e8"/>
@@ -107,45 +86,36 @@ header {
     <button id="loginBtn">Login</button>
     <button id="createBtn" class="secondary">Create Account</button>
 
-    <small>⚠️ No account recovery. Lost = gone.</small>
+    <small>⚠️ No account recovery</small>
   </div>
 </div>
 
-<!-- APP VIEW -->
-<div id="app">
-  <header>AnonyMouse</header>
-  <div style="padding:16px;">
-    <h3 id="welcome"></h3>
+<div id="app" class="center">
+  <div class="card">
+    <h2 id="welcome"></h2>
   </div>
 </div>
 
 <script>
-/* ================================
-   SUPABASE (INIT ONCE)
-================================ */
-const SUPABASE_URL = "https://mdfwcpzxanraetentncb.supabase.co";
-const SUPABASE_KEY = "sb_publishable_A9j8VGIbz-JikQzjbSm9vw_0qhrOLTk";
-
+/* ======================
+   SUPABASE INIT (ONCE)
+====================== */
 const supabase = window.supabase.createClient(
-  SUPABASE_URL,
-  SUPABASE_KEY
+  "https://mdfwcpzxanraetentncb.supabase.co",
+  "sb_publishable_A9j8VGIbz-JikQzjbSm9vw_0qhrOLTk"
 );
 
-/* ================================
-   DOM REFERENCES
-================================ */
-const authView = document.getElementById("auth");
-const appView = document.getElementById("app");
+/* DOM */
+const auth = document.getElementById("auth");
+const app = document.getElementById("app");
 const usernameInput = document.getElementById("username");
 const passwordInput = document.getElementById("password");
 const welcome = document.getElementById("welcome");
 
-document.getElementById("loginBtn").addEventListener("click", login);
-document.getElementById("createBtn").addEventListener("click", createAccount);
+document.getElementById("loginBtn").onclick = login;
+document.getElementById("createBtn").onclick = createAccount;
 
-/* ================================
-   AUTH FUNCTIONS
-================================ */
+/* CREATE ACCOUNT */
 async function createAccount() {
   const username = usernameInput.value.trim();
   const password = passwordInput.value;
@@ -176,6 +146,7 @@ async function createAccount() {
   alert("Account created. You can now login.");
 }
 
+/* LOGIN */
 async function login() {
   const username = usernameInput.value.trim();
   const password = passwordInput.value;
@@ -200,9 +171,7 @@ async function login() {
   loadApp();
 }
 
-/* ================================
-   LOAD APP AFTER LOGIN
-================================ */
+/* LOAD APP */
 async function loadApp() {
   const { data:{ user } } = await supabase.auth.getUser();
   if (!user) return;
@@ -213,12 +182,12 @@ async function loadApp() {
     .eq("id", user.id)
     .single();
 
-  authView.style.display = "none";
-  appView.style.display = "flex";
+  auth.style.display = "none";
+  app.style.display = "flex";
   welcome.textContent = `Hello, ${profile.username}`;
 }
 
-/* Auto-login if session exists */
+/* AUTO LOGIN */
 supabase.auth.getSession().then(({ data }) => {
   if (data.session) loadApp();
 });
