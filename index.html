@@ -345,7 +345,8 @@ function renderFriendRequests(requests) {
     const accept = document.createElement("button");
     accept.textContent = "Accept";
     accept.className = "btn-primary btn-small";
-    
+    accept.onclick = () => acceptRequest(req);
+ 
     const decline = document.createElement("button");
     decline.textContent = "Decline";
     decline.className = "btn-danger btn-small";
@@ -359,18 +360,20 @@ function renderFriendRequests(requests) {
   }
   }
   async function acceptRequest(req) {
-    await supa.from("friends").insert([
-      { user_id: myProfile.id, friend_id: req.from_user },
-      { user_id: req.from_user, friend_id: myProfile.id }
-    ]);
-  
-    await supa
-      .from("friend_requests")
-      .update({ status: "accepted" })
-      .eq("id", req.id);
-  
-    loadFriendRequests();
-  }
+  await supa.from("friends").insert([
+    { user_id: myProfile.id, friend_id: req.from_user },
+    { user_id: req.from_user, friend_id: myProfile.id }
+  ]);
+
+  await supa
+    .from("friend_requests")
+    .update({ status: "accepted" })
+    .eq("id", req.id);
+
+  loadFriendRequests();
+  loadFriends();
+}
+
 
   async function declineRequest(requestId) {
     await supa
@@ -380,7 +383,7 @@ function renderFriendRequests(requests) {
   
     loadFriendRequests();
   }
-  async function loadFriends() {async function loadFriends() {
+  async function loadFriends() {
   const {
     data: { user }
   } = await supa.auth.getUser();
@@ -423,6 +426,7 @@ function renderFriendRequests(requests) {
     list.innerHTML = "<p style='color:#888'>No friends yet</p>";
   }
 }
+
 
 
   // ===============================
@@ -510,6 +514,7 @@ function renderFriendRequests(requests) {
 
 </body>
 </html>
+
 
 
 
