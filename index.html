@@ -170,12 +170,7 @@ supa.auth.onAuthStateChange(async (_, session) => {
 
 /* LOGIN */
 loginBtn.onclick = async () => {
-  if (!email.value || !password.value) {
-    alert("Enter email and password");
-    return;
-  }
-
-  const { error } = await supa.auth.signInWithPassword({
+  const { data, error } = await supa.auth.signInWithPassword({
     email: email.value,
     password: password.value
   });
@@ -185,11 +180,20 @@ loginBtn.onclick = async () => {
     return;
   }
 
-  const { data } = await supa.auth.getSession();
-  if (data.session?.user) {
-    await showApp(data.session.user);
+  // 🔑 force UI sync
+  if (data.user) {
+    myProfile = await loadMyProfile(data.user);
+    welcomeText.textContent = "Welcome, " + myProfile.username;
+
+    authView.style.display = "none";
+    appView.style.display = "flex";
+
+    showHome();
+    loadFriends();
+    loadOnlineUsers();
   }
 };
+
 
 /* SIGNUP */
 signupBtn.onclick = async () => {
@@ -213,9 +217,11 @@ signupBtn.onclick = async () => {
       id: data.user.id,
       username: email.value.split("@")[0]
     });
-    await showApp(data.user);
+
+    alert("Account created. Please log in.");
   }
 };
+
 
 logoutBtn.onclick = async () => {
   await supa.auth.signOut();
@@ -226,3 +232,4 @@ backBtn.onclick = showHome;
 
 </body>
 </html>
+
