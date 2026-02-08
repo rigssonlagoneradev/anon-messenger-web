@@ -15,14 +15,12 @@
       font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
       background: #f2f4f8;
     }
-
     .center {
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
     }
-
     .card {
       background: white;
       width: 100%;
@@ -32,9 +30,7 @@
       box-shadow: 0 10px 30px rgba(0,0,0,.1);
       text-align: center;
     }
-
     h1, h3 { margin: 12px 0; }
-
     input, textarea {
       width: 100%;
       padding: 12px;
@@ -43,9 +39,7 @@
       border: 1px solid #ccc;
       font-size: 16px;
     }
-
     textarea { resize: none; height: 180px; }
-
     button {
       border: none;
       border-radius: 12px;
@@ -54,15 +48,12 @@
       cursor: pointer;
       background: #e5e7eb;
     }
-
     .btn-primary { background: #2563eb; color: #fff; }
     .btn-secondary { background: #f1f5f9; }
     .btn-small { padding: 6px 10px; font-size: 12px; }
     .btn-full { width: 100%; }
-
     #app { display: none; }
     #chatView { display: none; }
-
     .list-item {
       padding: 8px 0;
       border-bottom: 1px solid #eee;
@@ -76,7 +67,7 @@
 <div id="auth" class="center">
   <div class="card">
     <h1>Welcome to AnonyMouse</h1>
-    <input id="email" placeholder="Email" />
+    <input id="email" type="email" placeholder="Email" />
     <input id="password" type="password" placeholder="Password" />
     <button class="btn-primary btn-full" id="loginBtn">Login</button>
     <button class="btn-secondary btn-full" id="signupBtn">Create Account</button>
@@ -85,7 +76,6 @@
 
 <div id="app" class="center">
   <div class="card">
-
     <div id="homeView">
       <h1 id="welcomeText"></h1>
 
@@ -107,7 +97,6 @@
       <input placeholder="Type message (P2P next step)" />
       <button class="btn-primary btn-full">Send</button>
     </div>
-
   </div>
 </div>
 
@@ -131,9 +120,6 @@ const backBtn = document.getElementById("backBtn");
 
 let myProfile = null;
 
-/* ===============================
-   VIEW HELPERS
-================================ */
 function showAuth() {
   authView.style.display = "flex";
   appView.style.display = "none";
@@ -144,120 +130,90 @@ function showHome() {
   chatView.style.display = "none";
 }
 
-function openChat(friend) {
-  document.getElementById("chatTitle").textContent =
-    "Chat with " + friend.username;
-  homeView.style.display = "none";
-  chatView.style.display = "block";
+async function showApp(user) {
+  myProfile = await loadMyProfile(user);
+  if (!myProfile) return;
+
+  document.getElementById("welcomeText").textContent =
+    "Welcome, " + myProfile.username;
+
+  authView.style.display = "none";
+  appView.style.display = "flex";
+
+  showHome();
+  loadFriends();
+  loadOnlineUsers();
 }
 
-/* ===============================
-   PROFILE
-================================ */
 async function loadMyProfile(user) {
-  const { data } = await supa
+  const { data, error } = await supa
     .from("profiles")
     .select("*")
     .eq("id", user.id)
     .single();
+
+  if (error) {
+    alert("Profile missing. Please contact support.");
+    return null;
+  }
   return data;
 }
 
-/* ===============================
-   ✅ RESTORED: FRIENDS
-================================ */
-async function loadFriends() {
-  const { data: { user } } = await supa.auth.getUser();
-  if (!user) return;
-
-  const { data } = await supa
-    .from("friends")
-    .select(`
-      user_id,
-      friend_id,
-      user_profile:profiles!friends_user_id_fkey ( username ),
-      friend_profile:profiles!friends_friend_id_fkey ( username )
-    `)
-    .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`);
-
-  friendsList.innerHTML = "";
-
-  data.forEach(row => {
-    const friend = row.user_id === user.id
-      ? row.friend_profile
-      : row.user_profile;
-
-    if (!friend) return;
-
-    const div = document.createElement("div");
-    div.className = "list-item";
-    div.textContent = friend.username;
-    div.onclick = () => openChat(friend);
-
-    friendsList.appendChild(div);
-  });
-}
-
-/* ===============================
-   ✅ RESTORED: ONLINE USERS
-================================ */
-async function loadOnlineUsers() {
-  const { data } = await supa
-    .from("profiles")
-    .select("id, username");
-
-  onlineUsers.innerHTML = "";
-
-  data
-    .filter(u => u.id !== myProfile.id)
-    .forEach(u => {
-      const div = document.createElement("div");
-      div.className = "list-item";
-      div.textContent = "🟢 " + u.username;
-      onlineUsers.appendChild(div);
-    });
-}
-
-/* ===============================
-   AUTH STATE
-================================ */
+/* AUTH STATE */
 supa.auth.onAuthStateChange(async (_, session) => {
   if (session?.user) {
-    myProfile = await loadMyProfile(session.user);
-    welcomeText.textContent = "Welcome, " + myProfile.username;
-
-    authView.style.display = "none";
-    appView.style.display = "flex";
-
-    showHome();
-    loadFriends();
-    loadOnlineUsers();
+    await showApp(session.user);
   } else {
     showAuth();
   }
 });
 
-/* ===============================
-   AUTH ACTIONS
-================================ */
+/* LOGIN */
 loginBtn.onclick = async () => {
-  await supa.auth.signInWithPassword({
+  if (!email.value || !password.value) {
+    alert("Enter email and password");
+    return;
+  }
+
+  const { error } = await supa.auth.signInWithPassword({
     email: email.value,
     password: password.value
   });
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  const { data } = await supa.auth.getSession();
+  if (data.session?.user) {
+    await showApp(data.session.user);
+  }
 };
 
+/* SIGNUP */
 signupBtn.onclick = async () => {
-  const { data } = await supa.auth.signUp({
+  if (!email.value || !password.value) {
+    alert("Enter email and password");
+    return;
+  }
+
+  const { data, error } = await supa.auth.signUp({
     email: email.value,
     password: password.value
   });
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
 
   if (data.user) {
     await supa.from("profiles").insert({
       id: data.user.id,
       username: email.value.split("@")[0]
     });
+    await showApp(data.user);
   }
 };
 
