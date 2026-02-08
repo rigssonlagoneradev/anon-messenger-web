@@ -240,19 +240,23 @@ supa.auth.onAuthStateChange(async (_, session) => {
    AUTH ACTIONS
 ================================ */
 loginBtn.onclick = async () => {
-  alert("Login Button Clicked")
-  if (!email.value || !password.value) {
-    alert("Enter email and password");
-    return;
+  alert("Login clicked");
+
+  try {
+    const res = await supa.auth.signInWithPassword({
+      email: email.value,
+      password: password.value
+    });
+
+    alert("Auth request returned");
+    console.log(res);
+
+  } catch (e) {
+    alert("Caught exception");
+    console.error(e);
   }
-
-  const { error } = await supa.auth.signInWithPassword({
-    email: email.value,
-    password: password.value
-  });
-
-  if (error) alert(error.message);
 };
+
 
 signupBtn.onclick = async () => {
   if (!email.value || !password.value) {
@@ -289,4 +293,5 @@ backBtn.onclick = showHome;
 
 </body>
 </html>
+
 
