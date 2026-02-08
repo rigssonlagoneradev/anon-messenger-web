@@ -172,6 +172,10 @@ supa.auth.onAuthStateChange(async (_, session) => {
 
 /* LOGIN */
   console.log("BINDING LOGIN BUTTON", loginBtn);
+  loginBtn.onclick = async () => {
+  alert("LOGIN CLICKED");
+  ...
+};
 
 loginBtn.onclick = async () => {
   if (!email.value || !password.value) {
@@ -232,6 +236,7 @@ backBtn.onclick = showHome;
 
 </body>
 </html>
+
 
 
 
