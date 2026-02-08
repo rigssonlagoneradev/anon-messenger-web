@@ -1,100 +1,216 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AnonyMouse – Test</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AnonyMouse</title>
 
-  <!-- Supabase SDK -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Supabase v2 CDN (ONCE) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <style>
-    body {
-      margin: 0;
-      height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-family: system-ui, -apple-system;
-      background: #f2f4f8;
-    }
+<style>
+* { box-sizing: border-box; }
 
-    .box {
-      background: white;
-      padding: 24px;
-      border-radius: 12px;
-      width: 320px;
-      box-shadow: 0 10px 25px rgba(0,0,0,.15);
-      text-align: center;
-    }
+html, body {
+  margin: 0;
+  height: 100%;
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #f2f4f8;
+}
 
-    input, button {
-      width: 100%;
-      padding: 12px;
-      margin-top: 10px;
-      font-size: 16px;
-    }
+.center {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
-    button {
-      cursor: pointer;
-    }
-  </style>
+.card {
+  width: 100%;
+  max-width: 360px;
+  background: #fff;
+  padding: 24px;
+  border-radius: 18px;
+  box-shadow: 0 20px 40px rgba(0,0,0,.12);
+  text-align: center;
+}
+
+.logo svg {
+  width: 60px;
+  height: 60px;
+  margin-bottom: 10px;
+}
+
+h1 {
+  margin: 6px 0;
+  font-size: 22px;
+}
+
+.sub {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 18px;
+}
+
+input {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 10px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  font-size: 15px;
+}
+
+button {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: none;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.primary {
+  background: #1f6feb;
+  color: #fff;
+  margin-bottom: 8px;
+}
+
+.secondary {
+  background: #e5e7eb;
+}
+
+.error {
+  margin-top: 10px;
+  font-size: 13px;
+  color: #c00;
+}
+
+#app {
+  display: none;
+}
+</style>
 </head>
 
 <body>
 
-<div class="box">
-  <h2>AnonyMouse – Auth Test</h2>
+<!-- AUTH -->
+<div id="auth" class="center">
+  <div class="card">
+    <div class="logo">
+      <!-- Mouse logo -->
+      <svg viewBox="0 0 64 64">
+        <circle cx="32" cy="36" r="16" fill="#1f6feb"/>
+        <circle cx="18" cy="20" r="8" fill="#1f6feb"/>
+        <circle cx="46" cy="20" r="8" fill="#1f6feb"/>
+        <circle cx="27" cy="34" r="2" fill="#fff"/>
+        <circle cx="37" cy="34" r="2" fill="#fff"/>
+      </svg>
+    </div>
 
-  <input id="email" placeholder="Email" />
-  <input id="password" type="password" placeholder="Password" />
+    <h1>Welcome to AnonyMouse</h1>
+    <div class="sub">Private. Anonymous. No history.</div>
 
-  <button id="login">Login</button>
-  <button id="signup">Create Account</button>
+    <input id="email" type="email" placeholder="Email (required)" />
+    <input id="password" type="password" placeholder="Password" />
 
-  <p id="status"></p>
+    <button class="primary" onclick="login()">Login</button>
+    <button class="secondary" onclick="signup()">Create Account</button>
+
+    <div id="msg" class="error"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" class="center">
+  <div class="card">
+    <h1>🎉 Logged In</h1>
+    <p>This is the dashboard.</p>
+    <button class="primary" onclick="logout()">Logout</button>
+  </div>
 </div>
 
 <script>
-/* ============================
-   HARD BASELINE SCRIPT
-============================ */
-document.addEventListener("DOMContentLoaded", () => {
-  console.log("JS LOADED ✅");
+/* ================================
+   SUPABASE INIT (ONLY ONCE)
+================================ */
+const supabase = window.supabase.createClient(
+  "https://mdfwcpzxanraetentncb.supabase.co",
+  "PASTE_YOUR_PUBLIC_ANON_KEY_HERE"
+);
 
-  const status = document.getElementById("status");
+/* ================================
+   VIEW HELPERS
+================================ */
+const authView = document.getElementById("auth");
+const appView = document.getElementById("app");
+const msg = document.getElementById("msg");
 
-  const supabase = window.supabase.createClient(
-    "https://mdfwcpzxanraetentncb.supabase.co",
-    "sb_publishable_A9j8VGIbz-JikQzjbSm9vw_0qhrOLTk"
-  );
+function showAuth() {
+  authView.style.display = "flex";
+  appView.style.display = "none";
+}
 
-  document.getElementById("login").addEventListener("click", async () => {
-    alert("LOGIN CLICKED");
+function showApp() {
+  authView.style.display = "none";
+  appView.style.display = "flex";
+}
 
-    const email = document.getElementById("email").value.trim();
-    const password = document.getElementById("password").value;
+/* ================================
+   AUTH STATE (NO FLICKER)
+================================ */
+(async () => {
+  const { data } = await supabase.auth.getSession();
+  data.session ? showApp() : showAuth();
+})();
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email, password
-    });
-
-    status.textContent = error ? error.message : "Logged in ✅";
-  });
-
-  document.getElementById("signup").addEventListener("click", async () => {
-    alert("SIGNUP CLICKED");
-
-    const email = document.getElementById("email").value.trim();
-    const password = document.getElementById("password").value;
-
-    const { error } = await supabase.auth.signUp({
-      email, password
-    });
-
-    status.textContent = error ? error.message : "Account created ✅";
-  });
+supabase.auth.onAuthStateChange((_event, session) => {
+  session ? showApp() : showAuth();
 });
+
+/* ================================
+   LOGIN
+================================ */
+async function login() {
+  msg.textContent = "";
+
+  const email = email.value.trim();
+  const password = password.value;
+
+  if (!email || !password) {
+    msg.textContent = "Enter email and password.";
+    return;
+  }
+
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) msg.textContent = error.message;
+}
+
+/* ================================
+   SIGNUP
+================================ */
+async function signup() {
+  msg.textContent = "";
+
+  const email = email.value.trim();
+  const password = password.value;
+
+  if (!email || !password) {
+    msg.textContent = "Enter email and password.";
+    return;
+  }
+
+  const { error } = await supabase.auth.signUp({ email, password });
+  if (error) msg.textContent = error.message;
+  else msg.textContent = "Account created. You can now log in.";
+}
+
+/* ================================
+   LOGOUT
+================================ */
+async function logout() {
+  await supabase.auth.signOut();
+}
 </script>
 
 </body>
