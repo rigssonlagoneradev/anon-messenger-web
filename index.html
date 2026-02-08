@@ -5,14 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>AnonyMouse</title>
 
+<!-- Supabase SDK -->
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
 <style>
-:root{
-  --blue:#1877f2;
-  --bg:#f4f6fb;
-}
-
+:root{--blue:#1877f2;--bg:#f4f6fb}
 *{box-sizing:border-box;font-family:system-ui}
 html,body{margin:0;height:100%;background:var(--bg)}
 
@@ -34,49 +31,20 @@ html,body{margin:0;height:100%;background:var(--bg)}
   text-align:center;
 }
 
-/* ===== LOGO ===== */
 .logo{
-  width:72px;
-  height:72px;
-  margin:0 auto 12px;
-  background:var(--blue);
-  border-radius:50%;
-  position:relative;
+  width:72px;height:72px;margin:0 auto 12px;
+  background:var(--blue);border-radius:50%;position:relative
 }
 .logo::before{
-  content:"";
-  width:34px;
-  height:34px;
-  background:#fff;
-  border-radius:50%;
-  position:absolute;
-  top:19px;
-  left:19px;
+  content:"";width:34px;height:34px;background:#fff;
+  border-radius:50%;position:absolute;top:19px;left:19px
 }
 .logo::after{
-  content:"";
-  width:12px;
-  height:22px;
-  border:3px solid #fff;
-  border-left:none;
-  border-radius:0 22px 22px 0;
-  position:absolute;
-  right:-8px;
-  top:24px;
+  content:"";width:12px;height:22px;border:3px solid #fff;
+  border-left:none;border-radius:0 22px 22px 0;
+  position:absolute;right:-8px;top:24px
 }
 
-/* ===== TEXT ===== */
-h1{
-  margin:10px 0 6px;
-  font-size:26px;
-}
-.subtitle{
-  font-size:14px;
-  color:#666;
-  margin-bottom:22px;
-}
-
-/* ===== FORM ===== */
 input{
   width:100%;
   padding:14px;
@@ -114,16 +82,12 @@ button{
 
 <body>
 
-<!-- AUTH VIEW -->
 <div class="center">
   <div class="card">
 
     <div class="logo"></div>
-
     <h1>Welcome to AnonyMouse</h1>
-    <div class="subtitle">
-      Private. Anonymous. No history.
-    </div>
+    <p style="color:#666;margin-bottom:20px">Private. Anonymous. No history.</p>
 
     <input id="usernameInput" placeholder="Username">
     <input id="passwordInput" type="password" placeholder="Password">
@@ -132,7 +96,7 @@ button{
     <button id="signupBtn" class="secondary">Create Account</button>
 
     <div class="warning">
-      ⚠️ This app has <b>no account recovery</b>.<br>
+      ⚠️ No account recovery.<br>
       If you forget your username or password,<br>
       the account is permanently lost.
     </div>
@@ -141,22 +105,23 @@ button{
 </div>
 
 <script>
-/* ===== SUPABASE ===== */
-const supabase = supabase.createClient(
+/* ================= SUPABASE ================= */
+/* IMPORTANT: use a DIFFERENT variable name */
+const supabaseClient = window.supabase.createClient(
   "https://mdfwcpzxanraetentncb.supabase.co",
   "sb_publishable_A9j8VGIbz-JikQzjbSm9vw_0qhrOLTk"
 );
 
-/* ===== DOM ===== */
+/* ================= DOM ================= */
 const usernameInput = document.getElementById("usernameInput");
 const passwordInput = document.getElementById("passwordInput");
 const loginBtn = document.getElementById("loginBtn");
 const signupBtn = document.getElementById("signupBtn");
 
-/* ===== HELPERS ===== */
-const emailFromUsername = u => `${u}@anon.local`;
+/* ================= HELPERS ================= */
+const makeEmail = username => `${username}@anon.local`;
 
-/* ===== SIGN UP ===== */
+/* ================= SIGN UP ================= */
 signupBtn.addEventListener("click", async () => {
   const username = usernameInput.value.trim();
   const password = passwordInput.value;
@@ -166,19 +131,19 @@ signupBtn.addEventListener("click", async () => {
     return;
   }
 
-  const { error } = await supabase.auth.signUp({
-    email: emailFromUsername(username),
+  const { error } = await supabaseClient.auth.signUp({
+    email: makeEmail(username),
     password
   });
 
   if (error) {
     alert(error.message);
   } else {
-    alert("Account created successfully. You may now log in.");
+    alert("Account created successfully. You can now log in.");
   }
 });
 
-/* ===== LOGIN ===== */
+/* ================= LOGIN ================= */
 loginBtn.addEventListener("click", async () => {
   const username = usernameInput.value.trim();
   const password = passwordInput.value;
@@ -188,8 +153,8 @@ loginBtn.addEventListener("click", async () => {
     return;
   }
 
-  const { error } = await supabase.auth.signInWithPassword({
-    email: emailFromUsername(username),
+  const { data, error } = await supabaseClient.auth.signInWithPassword({
+    email: makeEmail(username),
     password
   });
 
@@ -197,7 +162,7 @@ loginBtn.addEventListener("click", async () => {
     alert("Invalid username or password.");
   } else {
     alert("Login successful ✅");
-    // next step: load messenger UI
+    console.log("Session:", data.session);
   }
 });
 </script>
