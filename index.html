@@ -240,7 +240,7 @@ supa.auth.onAuthStateChange(async (_, session) => {
    AUTH ACTIONS
 ================================ */
 loginBtn.onclick = async () => {
-  alert("Login clicked");
+  console.log("Login clicked");
 
   try {
     const res = await supa.auth.signInWithPassword({
@@ -248,8 +248,8 @@ loginBtn.onclick = async () => {
       password: password.value
     });
 
-    alert("Auth request returned");
-    console.log(res);
+    console.log("Auth request returned");
+    
 
   } catch (e) {
     alert("Caught exception");
@@ -293,5 +293,6 @@ backBtn.onclick = showHome;
 
 </body>
 </html>
+
 
 
