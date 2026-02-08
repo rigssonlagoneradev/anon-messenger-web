@@ -170,6 +170,11 @@ supa.auth.onAuthStateChange(async (_, session) => {
 
 /* LOGIN */
 loginBtn.onclick = async () => {
+  if (!email.value || !password.value) {
+    alert("Enter email and password");
+    return;
+  }
+
   const { data, error } = await supa.auth.signInWithPassword({
     email: email.value,
     password: password.value
@@ -180,19 +185,10 @@ loginBtn.onclick = async () => {
     return;
   }
 
-  // 🔑 force UI sync
-  if (data.user) {
-    myProfile = await loadMyProfile(data.user);
-    welcomeText.textContent = "Welcome, " + myProfile.username;
-
-    authView.style.display = "none";
-    appView.style.display = "flex";
-
-    showHome();
-    loadFriends();
-    loadOnlineUsers();
-  }
+  // 👇 This line is ONLY for debugging
+  console.log("Login success:", data.user);
 };
+
 
 
 /* SIGNUP */
@@ -232,4 +228,5 @@ backBtn.onclick = showHome;
 
 </body>
 </html>
+
 
